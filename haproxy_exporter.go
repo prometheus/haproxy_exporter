@@ -20,7 +20,7 @@ var (
 	listeningAddress      = flag.String("listeningAddress", ":8080", "Address on which to expose JSON metrics.")
 	metricsEndpoint       = flag.String("metricsEndpoint", "/metrics.json", "Path under which to expose JSON metrics.")
 	haProxyScrapeUri      = flag.String("haProxyScrapeUri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-	haProxyScrapeInterval = flag.Int("haProxyScrapeInterval", 15, "Interval in seconds between scrapes.")
+	haProxyScrapeInterval = flag.Duration("haProxyScrapeInterval", 15, "Interval in seconds between scrapes.")
 )
 
 // Exported internal metrics.
@@ -61,7 +61,7 @@ func newGauge(metricName string, docString string) metrics.Gauge {
 func scrapePeriodically(csvRows chan []string) {
 	for {
 		scrapeOnce(csvRows)
-		time.Sleep(time.Duration(*haProxyScrapeInterval) * time.Second)
+		time.Sleep(*haProxyScrapeInterval * time.Second)
 	}
 }
 
