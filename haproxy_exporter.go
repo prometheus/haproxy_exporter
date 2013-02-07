@@ -30,10 +30,14 @@ var (
 	csvParseFailures = metrics.NewCounter()
 )
 
-// Mappings from CSV field indexes to metrics.
-var fieldToMetric = map[int]metrics.Gauge{
+// Mappings from CSV summary field indexes to metrics.
+var summaryFieldToMetric = map[int]metrics.Gauge{
 	2:  newGauge("haproxy_current_queue", "Current instance queue length."),
 	3:  newGauge("haproxy_max_queue", "Maximum instance queue length."),
+}
+
+// Mappings from CSV field indexes to metrics.
+var fieldToMetric = map[int]metrics.Gauge{
 	4:  newGauge("haproxy_current_sessions", "Current number of active sessions."),
 	5:  newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
 	8:  newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
@@ -106,17 +110,29 @@ func exportCsvRow(csvRow []string) {
 	}
 
 	service, instance := csvRow[0], csvRow[1]
-	if instance == "FRONTEND" || instance == "BACKEND" {
-		// Ignore these summary rows for now, since we can aggregate by ourselves later.
+
+	if instance == "FRONTEND" {
 		return
 	}
 
-	labels := map[string]string{
-		"service":  service,
-		"instance": instance,
-	}
+	if instance == "BACKEND" {
+		labels := map[string]string{
+			"service":  service,
+		}
 
-	for fieldIdx, gauge := range fieldToMetric {
+		exportCsvFields(labels, summaryFieldToMetric, csvRow)
+	} else {
+		labels := map[string]string{
+			"service":  service,
+			"instance": instance,
+		}
+
+		exportCsvFields(labels, fieldToMetric, csvRow)
+	}
+}
+
+func exportCsvFields(labels map[string]string, fields map[int]metrics.Gauge, csvRow []string) {
+	for fieldIdx, gauge := range fields {
 		valueStr := csvRow[fieldIdx]
 		if valueStr == "" {
 			continue
