@@ -134,12 +134,11 @@ func exportCsvRow(csvRow []string) {
 		var value int64
 		var err error
 		switch valueStr {
-		// TODO: there are actually more possible string values, like "UP 1/3",
-		// etc. These currently produce intermittent parse errors. They need to be
-		// handled correctly in the future.
-		case "UP":
+		// UP or UP going down
+		case "UP", "UP 1/3", "UP 2/3":
 			value = 1
-		case "DOWN":
+		// DOWN or DOWN going up
+		case "DOWN", "DOWN 1/2":
 			value = 0
 		case "OPEN":
 			value = 0
