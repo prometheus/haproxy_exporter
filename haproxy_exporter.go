@@ -30,26 +30,17 @@ var (
 	csvParseFailures = metrics.NewCounter()
 )
 
-// Exported HAProxy metrics.
-var (
-	curQueue    = metrics.NewGauge()
-	maxQueue    = metrics.NewGauge()
-	curSessions = metrics.NewGauge()
-	maxSessions = metrics.NewGauge()
-	bytesIn     = metrics.NewGauge()
-	bytesOut    = metrics.NewGauge()
-	instanceUp  = metrics.NewGauge()
-)
-
 // Mappings from CSV field indexes to metrics.
 var fieldToMetric = map[int]metrics.Gauge{
 	2:  newGauge("haproxy_current_queue", "Current instance queue length."),
 	3:  newGauge("haproxy_max_queue", "Maximum instance queue length."),
-	4:  newGauge("haproxy_current_sessions", "Current number of sessions."),
-	5:  newGauge("haproxy_max_sessions", "Maximum number of sessions."),
+	4:  newGauge("haproxy_current_sessions", "Current number of active sessions."),
+	5:  newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
 	8:  newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
 	9:  newGauge("haproxy_bytes_out", "Current total of outgoing bytes."),
 	17: newGauge("haproxy_instance_up", "Current health status of the instance (1 = UP, 0 = DOWN)."),
+	33: newGauge("haproxy_current_session_rate", "Current number of sessions per second."),
+	35: newGauge("haproxy_max_session_rate", "Maximum number of sessions per second."),
 }
 
 func newGauge(metricName string, docString string) metrics.Gauge {
