@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/csv"
 	"flag"
-	"github.com/matttproud/golang_instrumentation"
-	"github.com/matttproud/golang_instrumentation/metrics"
+	"github.com/prometheus/client_golang"
+	"github.com/prometheus/client_golang/metrics"
 	"io"
 	"log"
 	"net/http"
