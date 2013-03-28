@@ -13,3 +13,7 @@ Help on flags:
 ```bash
 go run haproxy_exporter --help
 ```
+
+# Getting Started
+  * The source code is periodically indexed: [Prometheus HAProxy Exporter Bridge](http://godoc.org/github.com/prometheus/haproxy_exporter).
+  * All of the core developers are accessible via the [Prometheus Developers Mailinglist](https://groups.google.com/forum/?fromgroups#!forum/prometheus-developers).
