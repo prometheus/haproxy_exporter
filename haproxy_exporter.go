@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/csv"
 	"flag"
-	"github.com/prometheus/client_golang"
-	"github.com/prometheus/client_golang/metrics"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/prometheus/client_golang"
+	"github.com/prometheus/client_golang/metrics"
 )
 
 // Constants.
@@ -32,8 +33,8 @@ var (
 
 // Mappings from CSV summary field indexes to metrics.
 var summaryFieldToMetric = map[int]metrics.Gauge{
-	2:  newGauge("haproxy_current_queue", "Current instance queue length."),
-	3:  newGauge("haproxy_max_queue", "Maximum instance queue length."),
+	2: newGauge("haproxy_current_queue", "Current instance queue length."),
+	3: newGauge("haproxy_max_queue", "Maximum instance queue length."),
 }
 
 // Mappings from CSV field indexes to metrics.
@@ -117,7 +118,7 @@ func exportCsvRow(csvRow []string) {
 
 	if instance == "BACKEND" {
 		labels := map[string]string{
-			"service":  service,
+			"service": service,
 		}
 
 		exportCsvFields(labels, summaryFieldToMetric, csvRow)
