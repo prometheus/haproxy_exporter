@@ -7,64 +7,124 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Constants.
 const expectedCsvFieldCount = 52
 
-// Commandline flags.
-var (
-	listeningAddress      = flag.String("telemetry.address", ":8080", "Address on which to expose JSON metrics.")
-	metricsEndpoint       = flag.String("telemetry.endpoint", prometheus.ExpositionResource, "Path under which to expose metrics.")
-	haProxyScrapeUri      = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-	haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15, "Interval in seconds between scrapes.")
-)
-
-// Exported internal metrics.
 var (
 	totalScrapes     = prometheus.NewCounter()
 	scrapeFailures   = prometheus.NewCounter()
 	csvParseFailures = prometheus.NewCounter()
 )
 
-// Mappings from CSV summary field indexes to metrics.
-var summaryFieldToMetric = map[int]prometheus.Gauge{
-	2: newGauge("haproxy_current_queue", "Current server queue length."),
-	3: newGauge("haproxy_max_queue", "Maximum server queue length."),
+type registry struct {
+	prometheus.Registry
+	serviceMetrics map[int]prometheus.Gauge
+	backendMetrics map[int]prometheus.Gauge
 }
 
-// Mappings from CSV field indexes to metrics.
-var fieldToMetric = map[int]prometheus.Gauge{
-	4:  newGauge("haproxy_current_sessions", "Current number of active sessions."),
-	5:  newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
-	8:  newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
-	9:  newGauge("haproxy_bytes_out", "Current total of outgoing bytes."),
-	17: newGauge("haproxy_instance_up", "Current health status of the instance (1 = UP, 0 = DOWN)."),
-	33: newGauge("haproxy_current_session_rate", "Current number of sessions per second."),
-	35: newGauge("haproxy_max_session_rate", "Maximum number of sessions per second."),
+func newRegistry() *registry {
+	r := &registry{prometheus.NewRegistry(), make(map[int]prometheus.Gauge), make(map[int]prometheus.Gauge)}
+
+	r.Register("haproxy_exporter_total_scrapes", "Current total HAProxy scrapes.", prometheus.NilLabels, totalScrapes)
+	r.Register("haproxy_exporter_scrape_failures", "Number of errors while scraping HAProxy.", prometheus.NilLabels, scrapeFailures)
+	r.Register("haproxy_exporter_csv_parse_failures", "Number of errors while parsing CSV.", prometheus.NilLabels, csvParseFailures)
+
+	r.serviceMetrics = map[int]prometheus.Gauge{
+		2: r.newGauge("haproxy_current_queue", "Current server queue length."),
+		3: r.newGauge("haproxy_max_queue", "Maximum server queue length."),
+	}
+
+	r.backendMetrics = map[int]prometheus.Gauge{
+		4:  r.newGauge("haproxy_current_sessions", "Current number of active sessions."),
+		5:  r.newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
+		8:  r.newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
+		9:  r.newGauge("haproxy_bytes_out", "Current total of outgoing bytes."),
+		17: r.newGauge("haproxy_instance_up", "Current health status of the instance (1 = UP, 0 = DOWN)."),
+		33: r.newGauge("haproxy_current_session_rate", "Current number of sessions per second."),
+		35: r.newGauge("haproxy_max_session_rate", "Maximum number of sessions per second."),
+	}
+
+	return r
 }
 
-func newGauge(metricName string, docString string) prometheus.Gauge {
+func (r *registry) newGauge(metricName string, docString string) prometheus.Gauge {
 	gauge := prometheus.NewGauge()
-	prometheus.Register(metricName, docString, prometheus.NilLabels, gauge)
+	r.Register(metricName, docString, prometheus.NilLabels, gauge)
 	return gauge
 }
 
-func scrapePeriodically(csvRows chan []string) {
-	for {
-		scrapeOnce(csvRows)
-		time.Sleep(*haProxyScrapeInterval * time.Second)
+// Exporter collects HAProxy stats from the given URI and exports them using
+// the prometheus metrics package.
+type Exporter struct {
+	URI   string
+	reg   *registry
+	mutex sync.RWMutex
+}
+
+// NewExporter returns an initialized Exporter.
+func NewExporter(uri string) *Exporter {
+	return &Exporter{
+		URI: uri,
+		reg: newRegistry(),
 	}
 }
 
-func scrapeOnce(csvRows chan []string) {
+// Registry returns a prometheus.Registry type with the complete state of the
+// last stats collection run.
+func (e *Exporter) Registry() prometheus.Registry {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+
+	return e.reg
+}
+
+// Handler returns a http.HandlerFunc of the last finished prometheus.Registry.
+func (e *Exporter) Handler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reg := e.Registry()
+		f := reg.Handler()
+
+		f(w, r)
+	}
+}
+
+// Scrape fetches the stats from configured HAProxy location. It creates a new
+// prometheus.Registry object every time to not leak stale data from previous
+// collections.
+func (e *Exporter) Scrape() {
+	csvRows := make(chan []string)
+	quitChan := make(chan bool)
+	reg := newRegistry()
+
+	go e.scrape(csvRows, quitChan)
+	reg.exportMetrics(csvRows, quitChan)
+
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.reg = reg
+}
+
+// ScrapePeriodically runs the Scrape function in the specified interval.
+func (e *Exporter) ScrapePeriodically(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for _ = range ticker.C {
+		e.Scrape()
+	}
+}
+
+func (e *Exporter) scrape(csvRows chan []string, quitChan chan bool) {
+	defer close(quitChan)
 	defer totalScrapes.Increment(prometheus.NilLabels)
 
-	log.Printf("Scraping %s", *haProxyScrapeUri)
-	resp, err := http.Get(*haProxyScrapeUri)
+	resp, err := http.Get(e.URI)
 	if err != nil {
 		log.Printf("Error while scraping HAProxy: %v", err)
 		scrapeFailures.Increment(prometheus.NilLabels)
@@ -93,18 +153,23 @@ func scrapeOnce(csvRows chan []string) {
 
 		csvRows <- row
 	}
+
 }
 
-func exportMetrics(csvRows chan []string) {
+func (r *registry) exportMetrics(csvRows chan []string, quitChan chan bool) {
 	for {
-		row := <-csvRows
-		exportCsvRow(row)
+		select {
+		case row := <-csvRows:
+			r.exportCsvRow(row)
+		case <-quitChan:
+			return
+		}
 	}
 }
 
-func exportCsvRow(csvRow []string) {
+func (r *registry) exportCsvRow(csvRow []string) {
 	if len(csvRow) != expectedCsvFieldCount {
-		log.Printf("Wrong CSV field count: %i vs. %i", len(csvRow), expectedCsvFieldCount)
+		log.Printf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
 		csvParseFailures.Increment(prometheus.NilLabels)
 		return
 	}
@@ -120,14 +185,14 @@ func exportCsvRow(csvRow []string) {
 			"service": service,
 		}
 
-		exportCsvFields(labels, summaryFieldToMetric, csvRow)
+		exportCsvFields(labels, r.serviceMetrics, csvRow)
 	} else {
 		labels := map[string]string{
 			"service":  service,
 			"instance": instance,
 		}
 
-		exportCsvFields(labels, fieldToMetric, csvRow)
+		exportCsvFields(labels, r.backendMetrics, csvRow)
 	}
 }
 
@@ -162,17 +227,18 @@ func exportCsvFields(labels map[string]string, fields map[int]prometheus.Gauge, 
 }
 
 func main() {
+	var (
+		listeningAddress      = flag.String("telemetry.address", ":8080", "Address on which to expose JSON metrics.")
+		metricsEndpoint       = flag.String("telemetry.endpoint", prometheus.ExpositionResource, "Path under which to expose metrics.")
+		haProxyScrapeUri      = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
+		haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15, "Interval in seconds between scrapes.")
+	)
 	flag.Parse()
 
-	prometheus.Register("haproxy_exporter_total_scrapes", "Current total HAProxy scrapes.", prometheus.NilLabels, scrapeFailures)
-	prometheus.Register("haproxy_exporter_scrape_failures", "Number of errors while scraping HAProxy.", prometheus.NilLabels, scrapeFailures)
-	prometheus.Register("haproxy_exporter_csv_parse_failures", "Number of errors while scraping HAProxy.", prometheus.NilLabels, csvParseFailures)
-
-	csvRows := make(chan []string)
-	go scrapePeriodically(csvRows)
-	go exportMetrics(csvRows)
+	exporter := NewExporter(*haProxyScrapeUri)
+	go exporter.ScrapePeriodically(*haProxyScrapeInterval * time.Second)
 
 	log.Printf("Starting Server: %s", *listeningAddress)
-	http.Handle(*metricsEndpoint, prometheus.DefaultHandler)
+	http.Handle(*metricsEndpoint, exporter.Handler())
 	log.Fatal(http.ListenAndServe(*listeningAddress, nil))
 }
