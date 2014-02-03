@@ -8,7 +8,7 @@ ARCH := $(subst x86_64,amd64,$(shell uname -m))
 
 GOOS   ?= $(OS)
 GOARCH ?= $(ARCH)
-GOPKG  := go1.1.2.$(OS)-$(ARCH).tar.gz
+GOPKG  := go1.2.$(OS)-$(ARCH).tar.gz
 GOROOT ?= $(CURDIR)/.deps/go
 GOPATH ?= $(CURDIR)/.deps/gopath
 GOCC   := $(GOROOT)/bin/go
