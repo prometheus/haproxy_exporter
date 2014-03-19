@@ -231,12 +231,12 @@ func main() {
 		listeningAddress      = flag.String("telemetry.address", ":8080", "Address on which to expose JSON metrics.")
 		metricsEndpoint       = flag.String("telemetry.endpoint", prometheus.ExpositionResource, "Path under which to expose metrics.")
 		haProxyScrapeUri      = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15, "Interval in seconds between scrapes.")
+		haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15 * time.Second, "Interval in seconds between scrapes.")
 	)
 	flag.Parse()
 
 	exporter := NewExporter(*haProxyScrapeUri)
-	go exporter.ScrapePeriodically(*haProxyScrapeInterval * time.Second)
+	go exporter.ScrapePeriodically(*haProxyScrapeInterval)
 
 	log.Printf("Starting Server: %s", *listeningAddress)
 	http.Handle(*metricsEndpoint, exporter.Handler())
