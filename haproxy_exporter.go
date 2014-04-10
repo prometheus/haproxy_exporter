@@ -214,6 +214,8 @@ func exportCsvFields(labels map[string]string, fields map[int]prometheus.Gauge, 
 			value = 0
 		case "OPEN":
 			value = 0
+		case "no check":
+			continue
 		default:
 			value, err = strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
@@ -231,7 +233,7 @@ func main() {
 		listeningAddress      = flag.String("telemetry.address", ":8080", "Address on which to expose JSON metrics.")
 		metricsEndpoint       = flag.String("telemetry.endpoint", prometheus.ExpositionResource, "Path under which to expose metrics.")
 		haProxyScrapeUri      = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15 * time.Second, "Interval in seconds between scrapes.")
+		haProxyScrapeInterval = flag.Duration("haproxy.scrape_interval", 15*time.Second, "Interval in seconds between scrapes.")
 	)
 	flag.Parse()
 
