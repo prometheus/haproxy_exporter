@@ -23,30 +23,44 @@ var (
 
 type registry struct {
 	prometheus.Registry
-	serviceMetrics map[int]prometheus.Gauge
-	backendMetrics map[int]prometheus.Gauge
+	serviceMetrics map[int]metric
+	backendMetrics map[int]metric
+}
+
+type metric struct {
+	prometheus.Gauge
+	labels map[string]string
 }
 
 func newRegistry() *registry {
-	r := &registry{prometheus.NewRegistry(), make(map[int]prometheus.Gauge), make(map[int]prometheus.Gauge)}
+	r := &registry{Registry: prometheus.NewRegistry()}
 
 	r.Register("haproxy_exporter_total_scrapes", "Current total HAProxy scrapes.", prometheus.NilLabels, totalScrapes)
 	r.Register("haproxy_exporter_scrape_failures", "Number of errors while scraping HAProxy.", prometheus.NilLabels, scrapeFailures)
 	r.Register("haproxy_exporter_csv_parse_failures", "Number of errors while parsing CSV.", prometheus.NilLabels, csvParseFailures)
 
-	r.serviceMetrics = map[int]prometheus.Gauge{
-		2: r.newGauge("haproxy_current_queue", "Current server queue length."),
-		3: r.newGauge("haproxy_max_queue", "Maximum server queue length."),
+	r.serviceMetrics = map[int]metric{
+		2: r.newMetric("haproxy_current_queue", "Current server queue length."),
+		3: r.newMetric("haproxy_max_queue", "Maximum server queue length."),
 	}
 
-	r.backendMetrics = map[int]prometheus.Gauge{
-		4:  r.newGauge("haproxy_current_sessions", "Current number of active sessions."),
-		5:  r.newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
-		8:  r.newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
-		9:  r.newGauge("haproxy_bytes_out", "Current total of outgoing bytes."),
-		17: r.newGauge("haproxy_server_up", "Current health status of the server (1 = UP, 0 = DOWN)."),
-		33: r.newGauge("haproxy_current_session_rate", "Current number of sessions per second."),
-		35: r.newGauge("haproxy_max_session_rate", "Maximum number of sessions per second."),
+	httpResponses := r.newGauge("haproxy_http_responses", "Total of HTTP responses.")
+	r.backendMetrics = map[int]metric{
+		4:  r.newMetric("haproxy_current_sessions", "Current number of active sessions."),
+		5:  r.newMetric("haproxy_max_sessions", "Maximum number of active sessions."),
+		8:  r.newMetric("haproxy_bytes_in", "Current total of incoming bytes."),
+		9:  r.newMetric("haproxy_bytes_out", "Current total of outgoing bytes."),
+		13: r.newMetric("haproxy_connection_errors", "Total of connection errors."),
+		14: r.newMetric("haproxy_response_errors", "Total of response errors."),
+		15: r.newMetric("haproxy_retry_warnings", "Total of retry warnings."),
+		16: r.newMetric("haproxy_redispatch_warnings", "Total of redispatch warnings."),
+		17: r.newMetric("haproxy_server_up", "Current health status of the server (1 = UP, 0 = DOWN)."),
+		33: r.newMetric("haproxy_current_session_rate", "Current number of sessions per second over last elapsed second."),
+		35: r.newMetric("haproxy_max_session_rate", "Maximum number of sessions per second."),
+		40: metric{httpResponses, map[string]string{"code": "2xx"}},
+		41: metric{httpResponses, map[string]string{"code": "3xx"}},
+		42: metric{httpResponses, map[string]string{"code": "4xx"}},
+		43: metric{httpResponses, map[string]string{"code": "5xx"}},
 	}
 
 	return r
@@ -56,6 +70,10 @@ func (r *registry) newGauge(metricName string, docString string) prometheus.Gaug
 	gauge := prometheus.NewGauge()
 	r.Register(metricName, docString, prometheus.NilLabels, gauge)
 	return gauge
+}
+
+func (r *registry) newMetric(metricName string, docString string) metric {
+	return metric{r.newGauge(metricName, docString), prometheus.NilLabels}
 }
 
 // Exporter collects HAProxy stats from the given URI and exports them using
@@ -196,8 +214,8 @@ func (r *registry) exportCsvRow(csvRow []string) {
 	}
 }
 
-func exportCsvFields(labels map[string]string, fields map[int]prometheus.Gauge, csvRow []string) {
-	for fieldIdx, gauge := range fields {
+func exportCsvFields(labels map[string]string, metrics map[int]metric, csvRow []string) {
+	for fieldIdx, metric := range metrics {
 		valueStr := csvRow[fieldIdx]
 		if valueStr == "" {
 			continue
@@ -224,7 +242,16 @@ func exportCsvFields(labels map[string]string, fields map[int]prometheus.Gauge, 
 				continue
 			}
 		}
-		gauge.Set(labels, float64(value))
+
+		l := make(map[string]string, len(labels)+len(metric.labels))
+		for k, v := range labels {
+			l[k] = v
+		}
+		for k, v := range metric.labels {
+			l[k] = v
+		}
+
+		metric.Set(l, float64(value))
 	}
 }
 
