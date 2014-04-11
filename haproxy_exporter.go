@@ -44,7 +44,7 @@ func newRegistry() *registry {
 		5:  r.newGauge("haproxy_max_sessions", "Maximum number of active sessions."),
 		8:  r.newGauge("haproxy_bytes_in", "Current total of incoming bytes."),
 		9:  r.newGauge("haproxy_bytes_out", "Current total of outgoing bytes."),
-		17: r.newGauge("haproxy_instance_up", "Current health status of the instance (1 = UP, 0 = DOWN)."),
+		17: r.newGauge("haproxy_server_up", "Current health status of the server (1 = UP, 0 = DOWN)."),
 		33: r.newGauge("haproxy_current_session_rate", "Current number of sessions per second."),
 		35: r.newGauge("haproxy_max_session_rate", "Maximum number of sessions per second."),
 	}
@@ -174,13 +174,13 @@ func (r *registry) exportCsvRow(csvRow []string) {
 		return
 	}
 
-	service, instance := csvRow[0], csvRow[1]
+	service, server := csvRow[0], csvRow[1]
 
-	if instance == "FRONTEND" {
+	if server == "FRONTEND" {
 		return
 	}
 
-	if instance == "BACKEND" {
+	if server == "BACKEND" {
 		labels := map[string]string{
 			"service": service,
 		}
@@ -188,8 +188,8 @@ func (r *registry) exportCsvRow(csvRow []string) {
 		exportCsvFields(labels, r.serviceMetrics, csvRow)
 	} else {
 		labels := map[string]string{
-			"service":  service,
-			"instance": instance,
+			"service": service,
+			"server":  server,
 		}
 
 		exportCsvFields(labels, r.backendMetrics, csvRow)
