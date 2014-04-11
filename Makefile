@@ -1,4 +1,4 @@
-VERSION  := 0.2.1
+VERSION  := 0.3.0
 
 SRC      := $(wildcard *.go)
 TARGET   := haproxy_exporter
@@ -55,7 +55,7 @@ release:
 	GOOS=darwin REMOTE=$(REMOTE) REMOTE_DIR=$(REMOTE_DIR) $(MAKE) upload
 
 test:
-	go test
+	go test ./...
 
 benchmark:
 	go test -bench . -test.benchmem -benchtime=10s
