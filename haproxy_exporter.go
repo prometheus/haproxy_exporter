@@ -6,10 +6,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"strconv"
 	"sync"
 	"time"
-	_ "net/http/pprof"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
