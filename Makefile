@@ -1,4 +1,4 @@
-VERSION  := 0.3.0
+VERSION  := 0.3.1
 
 SRC      := $(wildcard *.go)
 TARGET   := haproxy_exporter
