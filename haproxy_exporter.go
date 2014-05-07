@@ -14,6 +14,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// HAProxy 1.4
+// # pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,
+// HAProxy 1.5
+// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,
 const expectedCsvFieldCount = 52
 
 var (
@@ -187,7 +191,7 @@ func (r *registry) exportMetrics(csvRows chan []string, quitChan chan bool) {
 }
 
 func (r *registry) exportCsvRow(csvRow []string) {
-	if len(csvRow) != expectedCsvFieldCount {
+	if len(csvRow) < expectedCsvFieldCount {
 		log.Printf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
 		csvParseFailures.Increment(prometheus.NilLabels)
 		return
