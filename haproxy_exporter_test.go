@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	dto "github.com/prometheus/client_model/go"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,10 +32,12 @@ func handler(h *haproxy) http.HandlerFunc {
 }
 
 func readCounter(m prometheus.Counter) int {
-	// seriously? prometheus isn't very good in exposing metrics ...
-	re := regexp.MustCompile(`&{map\[\] (\d+)\}`)
+	re := regexp.MustCompile(`counter:<value:(\d+) >`)
 
-	matches := re.FindStringSubmatch(m.String())
+	pb := &dto.Metric{}
+	m.Write(pb)
+
+	matches := re.FindStringSubmatch(pb.String())
 	if len(matches) != 2 {
 		return 0
 	}
@@ -46,26 +50,32 @@ func readCounter(m prometheus.Counter) int {
 	return v
 }
 
-func resetGlobalCounters() {
-	totalScrapes.ResetAll()
-	scrapeFailures.ResetAll()
-	csvParseFailures.ResetAll()
-}
-
 func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	resetGlobalCounters()
 	e := NewExporter(h.URL)
-	e.Scrape()
+	ch := make(chan prometheus.Metric)
 
-	if expect, got := 1, readCounter(totalScrapes); expect != got {
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
 		t.Errorf("expected %d recorded scrape, got %d", expect, got)
 	}
-
-	if expect, got := 1, readCounter(csvParseFailures); expect != got {
+	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// scrapeFailures
 		t.Errorf("expected %d failed scrape, got %d", expect, got)
+	}
+	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %d csv parse failures, got %d", expect, got)
+	}
+	if <-ch != nil {
+		t.Errorf("expected closed channel")
 	}
 }
 
@@ -73,31 +83,29 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,,,,,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	resetGlobalCounters()
 	e := NewExporter(h.URL)
-	e.Scrape()
+	ch := make(chan prometheus.Metric)
 
-	if expect, got := 1, readCounter(totalScrapes); expect != got {
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
 		t.Errorf("expected %d recorded scrape, got %d", expect, got)
 	}
-
-	if expect, got := 0, readCounter(csvParseFailures); expect != got {
-		t.Errorf("expected %d failed parsings, got %d", expect, got)
+	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// scrapeFailures
+		t.Errorf("expected %d failed scrape, got %d", expect, got)
 	}
-}
-
-func TestConfigChangeDetection(t *testing.T) {
-	h := newHaproxy([]byte(""))
-	defer h.Close()
-
-	resetGlobalCounters()
-	e := NewExporter(h.URL)
-	e.Scrape()
-
-	// TODO: Add a proper test here. Unfortunately, it's not possible to get any
-	// numbers out of the registry, once added. The overhead of parsing the
-	// JSON/protobuf output and testing the correct results here is currently
-	// deemed too high, given the imminent client rewrite.
+	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %d csv parse failures, got %d", expect, got)
+	}
+	// Such up the remaining metrics.
+	for _ = range ch {
+	}
 }
 
 func BenchmarkExtract(b *testing.B) {
@@ -109,7 +117,6 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	resetGlobalCounters()
 	e := NewExporter(h.URL)
 
 	var before, after runtime.MemStats
@@ -118,7 +125,14 @@ func BenchmarkExtract(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		e.Scrape()
+		ch := make(chan prometheus.Metric)
+		go func(ch chan prometheus.Metric) {
+			for _ = range ch {
+			}
+		}(ch)
+
+		e.Collect(ch)
+		close(ch)
 	}
 
 	runtime.GC()
