@@ -4,9 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"runtime"
-	"strconv"
 	"testing"
 
 	dto "github.com/prometheus/client_model/go"
@@ -31,23 +29,11 @@ func handler(h *haproxy) http.HandlerFunc {
 	}
 }
 
-func readCounter(m prometheus.Counter) int {
-	re := regexp.MustCompile(`counter:<value:(\d+) >`)
-
+func readCounter(m prometheus.Counter) float64 {
+	// TODO: Revisit this once client_golang offers better testing tools.
 	pb := &dto.Metric{}
 	m.Write(pb)
-
-	matches := re.FindStringSubmatch(pb.String())
-	if len(matches) != 2 {
-		return 0
-	}
-
-	v, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0
-	}
-
-	return v
+	return pb.GetCounter().GetValue()
 }
 
 func TestInvalidConfig(t *testing.T) {
@@ -62,17 +48,17 @@ func TestInvalidConfig(t *testing.T) {
 		e.Collect(ch)
 	}()
 
-	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// totalScrapes
-		t.Errorf("expected %d recorded scrape, got %d", expect, got)
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
 	}
-	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// scrapeFailures
-		t.Errorf("expected %d failed scrape, got %d", expect, got)
+		t.Errorf("expected %f failed scrape, got %f", expect, got)
 	}
-	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// csvParseFailures
-		t.Errorf("expected %d csv parse failures, got %d", expect, got)
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
 	}
 	if <-ch != nil {
 		t.Errorf("expected closed channel")
@@ -91,19 +77,40 @@ func TestServerWithoutChecks(t *testing.T) {
 		e.Collect(ch)
 	}()
 
-	if expect, got := 1, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// totalScrapes
-		t.Errorf("expected %d recorded scrape, got %d", expect, got)
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
 	}
-	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// scrapeFailures
-		t.Errorf("expected %d failed scrape, got %d", expect, got)
+		t.Errorf("expected %f failed scrape, got %f", expect, got)
 	}
-	if expect, got := 0, readCounter((<-ch).(prometheus.Counter)); expect != got {
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// csvParseFailures
-		t.Errorf("expected %d csv parse failures, got %d", expect, got)
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
 	}
-	// Such up the remaining metrics.
+	// Suck up the remaining metrics.
+	for _ = range ch {
+	}
+}
+
+func TestConfigChangeDetection(t *testing.T) {
+	h := newHaproxy([]byte(""))
+	defer h.Close()
+
+	e := NewExporter(h.URL)
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	// TODO: Add a proper test here. Vet the possibilities of the new
+	// client_golang to do this easily. If better test support is needed,
+	// add it to client_golang first. (See also readCounter() above.)
+
+	// Suck up the remaining metrics.
 	for _ = range ch {
 	}
 }
