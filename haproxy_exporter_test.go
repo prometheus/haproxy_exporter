@@ -36,11 +36,18 @@ func readCounter(m prometheus.Counter) float64 {
 	return pb.GetCounter().GetValue()
 }
 
+func readGauge(m prometheus.Gauge) float64 {
+	// TODO: Revisit this once client_golang offers better testing tools.
+	pb := &dto.Metric{}
+	m.Write(pb)
+	return pb.GetGauge().GetValue()
+}
+
 func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e := NewExporter(h.URL)
+	e := NewExporter(h.URL, "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -48,13 +55,13 @@ func TestInvalidConfig(t *testing.T) {
 		e.Collect(ch)
 	}()
 
+	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
 	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// totalScrapes
 		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// scrapeFailures
-		t.Errorf("expected %f failed scrape, got %f", expect, got)
 	}
 	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// csvParseFailures
@@ -69,7 +76,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,,,,,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	e := NewExporter(h.URL)
+	e := NewExporter(h.URL, "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -77,13 +84,13 @@ func TestServerWithoutChecks(t *testing.T) {
 		e.Collect(ch)
 	}()
 
+	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
 	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// totalScrapes
 		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// scrapeFailures
-		t.Errorf("expected %f failed scrape, got %f", expect, got)
 	}
 	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
 		// csvParseFailures
@@ -98,7 +105,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e := NewExporter(h.URL)
+	e := NewExporter(h.URL, "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -124,7 +131,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e := NewExporter(h.URL)
+	e := NewExporter(h.URL, "")
 
 	var before, after runtime.MemStats
 	runtime.GC()
