@@ -105,10 +105,12 @@ func NewExporter(uri string, haProxyServerMetricFields string) *Exporter {
 		17: newServerMetric("up", "Current health status of the server (1 = UP, 0 = DOWN).", nil),
 		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 		35: newServerMetric("max_session_rate", "Maximum number of sessions per second.", nil),
+		39: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
 		40: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
 		41: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
 		42: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 		43: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
+		44: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 	} {
 		if len(serverMetricFields) == 0 || serverMetricFields[index] {
 			serverMetrics[index] = metric
@@ -138,14 +140,16 @@ func NewExporter(uri string, haProxyServerMetricFields string) *Exporter {
 			7:  newFrontendMetric("connections_total", "Total number of connections.", nil),
 			8:  newFrontendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 			9:  newFrontendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
-			10: newFrontendMetric("request_denied_total", "Total of requests denied for security.", nil),
+			10: newFrontendMetric("requests_denied_total", "Total of requests denied for security.", nil),
 			12: newBackendMetric("request_errors_total", "Total of request errors.", nil),
 			33: newFrontendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 			35: newFrontendMetric("max_session_rate", "Maximum number of sessions per second.", nil),
+			39: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
 			40: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
 			41: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
 			42: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 			43: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
+			44: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 			48: newFrontendMetric("http_requests_total", "Total HTTP requests.", nil),
 		},
 		backendMetrics: map[int]*prometheus.GaugeVec{
@@ -163,10 +167,12 @@ func NewExporter(uri string, haProxyServerMetricFields string) *Exporter {
 			17: newBackendMetric("up", "Current health status of the backend (1 = UP, 0 = DOWN).", nil),
 			33: newBackendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 			35: newBackendMetric("max_session_rate", "Maximum number of sessions per second.", nil),
+			39: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
 			40: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
 			41: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
 			42: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 			43: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
+			44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 		},
 		serverMetrics: serverMetrics,
 	}
