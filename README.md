@@ -21,3 +21,9 @@ go run haproxy_exporter --help
 # Testing
 
 [![Build Status](https://travis-ci.org/prometheus/haproxy_exporter.png?branch=master)](https://travis-ci.org/prometheus/haproxy_exporter)
+
+# Docker
+
+To run the haproxy exporter as a Docker container, run:
+
+  $ docker run -p 8080:8080 prom/haproxy-exporter -haproxy.scrape_uri="http://user:passS@haproxy.example.com/haproxy?stats;csv"
