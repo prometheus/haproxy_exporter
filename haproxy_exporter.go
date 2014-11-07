@@ -5,11 +5,13 @@ import (
 	"flag"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -75,10 +77,11 @@ type Exporter struct {
 	up                                             prometheus.Gauge
 	totalScrapes, csvParseFailures                 prometheus.Counter
 	frontendMetrics, backendMetrics, serverMetrics map[int]*prometheus.GaugeVec
+	client                                         *http.Client
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, haProxyServerMetricFields string) *Exporter {
+func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Duration) *Exporter {
 	serverMetrics := map[int]*prometheus.GaugeVec{}
 
 	serverMetricFields := make(map[int]bool)
@@ -177,6 +180,13 @@ func NewExporter(uri string, haProxyServerMetricFields string) *Exporter {
 			44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 		},
 		serverMetrics: serverMetrics,
+		client: &http.Client{
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout: timeout,
+				}).Dial,
+			},
+		},
 	}
 }
 
@@ -340,11 +350,12 @@ func main() {
 		metricsEndpoint           = flag.String("telemetry.endpoint", "/metrics", "Path under which to expose metrics.")
 		haProxyScrapeUri          = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
 		haProxyServerMetricFields = flag.String("haproxy.server_metric_fields", "", "If specified, only export the given csv fields. Comma-seperated list of numbers. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
+		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		_                         = flag.Duration("haproxy.scrape_interval", 0, "DEPRECATED. Not used anymore.")
 	)
 	flag.Parse()
 
-	exporter := NewExporter(*haProxyScrapeUri, *haProxyServerMetricFields)
+	exporter := NewExporter(*haProxyScrapeUri, *haProxyServerMetricFields, *haProxyTimeout)
 	prometheus.MustRegister(exporter)
 
 	log.Printf("Starting Server: %s", *listeningAddress)

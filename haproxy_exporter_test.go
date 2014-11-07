@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"testing"
+	"time"
 
 	dto "github.com/prometheus/client_model/go"
 
@@ -47,7 +48,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "")
+	e := NewExporter(h.URL, "", 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -76,7 +77,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,,,,,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "")
+	e := NewExporter(h.URL, "", 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -105,7 +106,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "")
+	e := NewExporter(h.URL, "", 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -131,7 +132,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e := NewExporter(h.URL, "")
+	e := NewExporter(h.URL, "", 5*time.Second)
 
 	var before, after runtime.MemStats
 	runtime.GC()
