@@ -229,7 +229,7 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 
 	e.totalScrapes.Inc()
 
-	resp, err := http.Get(e.URI)
+	resp, err := e.client.Get(e.URI)
 	if err != nil {
 		e.up.Set(0)
 		log.Printf("Error while scraping HAProxy: %v", err)
