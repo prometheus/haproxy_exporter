@@ -1,4 +1,5 @@
-VERSION  := 0.4.0
+VERSION    := 0.4.0
+GO_VERSION ?= 1.2.1
 
 SRC      := $(wildcard *.go)
 TARGET   := haproxy_exporter
@@ -6,9 +7,16 @@ TARGET   := haproxy_exporter
 OS   := $(subst Darwin,darwin,$(subst Linux,linux,$(shell uname)))
 ARCH := $(subst x86_64,amd64,$(shell uname -m))
 
+ifeq ($(GOOS),darwin)
+RELEASE_SUFFIX ?= -osx$(MAC_OS_X_VERSION)
+else
+RELEASE_SUFFIX ?=
+endif
+
 GOOS   ?= $(OS)
 GOARCH ?= $(ARCH)
-GOPKG  := go1.2.1.$(OS)-$(ARCH).tar.gz
+GOPKG  := go$(GO_VERSION).$(GOOS)-$(GOARCH)$(RELEASE_SUFFIX).tar.gz
+GOURL	 := http://golang.org/dl
 GOROOT ?= $(CURDIR)/.deps/go
 GOPATH ?= $(CURDIR)/.deps/gopath
 GOCC   := $(GOROOT)/bin/go
@@ -25,7 +33,7 @@ build: $(BINARY)
 
 .deps/$(GOPKG):
 	mkdir -p .deps
-	curl -o .deps/$(GOPKG) http://go.googlecode.com/files/$(GOPKG)
+	curl -o $@ -L $(GOURL)/$(GOPKG)
 
 $(GOCC): .deps/$(GOPKG)
 	tar -C .deps -xzf .deps/$(GOPKG)
