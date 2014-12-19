@@ -182,9 +182,16 @@ func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Dura
 		serverMetrics: serverMetrics,
 		client: &http.Client{
 			Transport: &http.Transport{
-				Dial: (&net.Dialer{
-					Timeout: timeout,
-				}).Dial,
+				Dial: func(netw, addr string) (net.Conn, error) {
+					c, err := net.DialTimeout(netw, addr, timeout)
+					if err != nil {
+						return nil, err
+					}
+					if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+						return nil, err
+					}
+					return c, nil
+				},
 			},
 		},
 	}
