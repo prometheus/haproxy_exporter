@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"flag"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -355,15 +356,33 @@ func main() {
 	var (
 		listeningAddress          = flag.String("telemetry.address", ":8080", "Address on which to expose metrics.")
 		metricsEndpoint           = flag.String("telemetry.endpoint", "/metrics", "Path under which to expose metrics.")
-		haProxyScrapeUri          = flag.String("haproxy.scrape_uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyServerMetricFields = flag.String("haproxy.server_metric_fields", "", "If specified, only export the given csv fields. Comma-seperated list of numbers. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
+		haProxyScrapeUri          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
+		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", "", "If specified, only export the given csv fields. Comma-seperated list of numbers. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
-		_                         = flag.Duration("haproxy.scrape_interval", 0, "DEPRECATED. Not used anymore.")
+		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
 	)
 	flag.Parse()
 
 	exporter := NewExporter(*haProxyScrapeUri, *haProxyServerMetricFields, *haProxyTimeout)
 	prometheus.MustRegister(exporter)
+
+	if *haProxyPidFile != "" {
+		procExporter := prometheus.NewProcessCollectorPIDFn(
+			func() int {
+				content, err := ioutil.ReadFile(*haProxyPidFile)
+				if err != nil {
+					log.Println("Error while reading pid file:", err)
+					return 0
+				}
+				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
+				if err != nil {
+					log.Println("Error while parsing pid file:", err)
+					return 0
+				}
+				return value
+			}, namespace)
+		prometheus.MustRegister(procExporter)
+	}
 
 	log.Printf("Starting Server: %s", *listeningAddress)
 	http.Handle(*metricsEndpoint, prometheus.Handler())
