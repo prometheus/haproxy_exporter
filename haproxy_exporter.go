@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -368,18 +369,16 @@ func main() {
 
 	if *haProxyPidFile != "" {
 		procExporter := prometheus.NewProcessCollectorPIDFn(
-			func() int {
+			func() (int, error) {
 				content, err := ioutil.ReadFile(*haProxyPidFile)
 				if err != nil {
-					log.Println("Error while reading pid file:", err)
-					return 0
+					return 0, fmt.Errorf("error reading pid file: %s", err)
 				}
 				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
 				if err != nil {
-					log.Println("Error while parsing pid file:", err)
-					return 0
+					return 0, fmt.Errorf("error parsing pid file: %s", err)
 				}
-				return value
+				return value, nil
 			}, namespace)
 		prometheus.MustRegister(procExporter)
 	}
