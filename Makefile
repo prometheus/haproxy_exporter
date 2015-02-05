@@ -4,8 +4,8 @@ GO_VERSION ?= 1.4
 SRC      := $(wildcard *.go)
 TARGET   := haproxy_exporter
 
-OS   := $(subst Darwin,darwin,$(subst Linux,linux,$(shell uname)))
-ARCH := $(subst x86_64,amd64,$(shell uname -m))
+OS   := $(subst Darwin,darwin,$(subst Linux,linux,$(subst FreeBSD,freebsd,$(shell uname))))
+ARCH := $(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
 
 ifeq ($(GOOS),darwin)
 RELEASE_SUFFIX ?= -osx$(MAC_OS_X_VERSION)
