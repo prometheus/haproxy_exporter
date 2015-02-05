@@ -16,7 +16,7 @@ endif
 GOOS   ?= $(OS)
 GOARCH ?= $(ARCH)
 GOPKG  := go$(GO_VERSION).$(GOOS)-$(GOARCH)$(RELEASE_SUFFIX).tar.gz
-GOURL	 := http://golang.org/dl
+GOURL	 := https://golang.org/dl
 GOROOT ?= $(CURDIR)/.deps/go
 GOPATH ?= $(CURDIR)/.deps/gopath
 GOCC   := $(GOROOT)/bin/go
