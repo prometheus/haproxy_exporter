@@ -26,4 +26,4 @@ go run haproxy_exporter --help
 
 To run the haproxy exporter as a Docker container, run:
 
-  $ docker run -p 8080:8080 prom/haproxy-exporter -haproxy.scrape_uri="http://user:passS@haproxy.example.com/haproxy?stats;csv"
+    $ docker run -p 8080:8080 prom/haproxy-exporter -haproxy.scrape_uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
