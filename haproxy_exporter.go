@@ -355,8 +355,8 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 
 func main() {
 	var (
-		listeningAddress          = flag.String("telemetry.address", ":8080", "Address on which to expose metrics.")
-		metricsEndpoint           = flag.String("telemetry.endpoint", "/metrics", "Path under which to expose metrics.")
+		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
+		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		haProxyScrapeUri          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
 		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", "", "If specified, only export the given csv fields. Comma-seperated list of numbers. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
@@ -383,16 +383,16 @@ func main() {
 		prometheus.MustRegister(procExporter)
 	}
 
-	log.Printf("Starting Server: %s", *listeningAddress)
-	http.Handle(*metricsEndpoint, prometheus.Handler())
+	log.Printf("Starting Server: %s", *listenAddress)
+	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Haproxy Exporter</title></head>
              <body>
              <h1>Haproxy Exporter</h1>
-             <p><a href='` + *metricsEndpoint + `'>Metrics</a></p>
+             <p><a href='` + *metricsPath + `'>Metrics</a></p>
              </body>
              </html>`))
 	})
-	log.Fatal(http.ListenAndServe(*listeningAddress, nil))
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
