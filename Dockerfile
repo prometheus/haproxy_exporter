@@ -1,7 +1,7 @@
 FROM       ubuntu:latest
 MAINTAINER Prometheus Team <prometheus-developers@googlegroups.com>
 ENTRYPOINT [ "./bin/haproxy_exporter" ]
-EXPOSE     8080
+EXPOSE     9101
 
 RUN        apt-get -qy update && apt-get install -yq make git curl mercurial
 ADD        . /haproxy_exporter
