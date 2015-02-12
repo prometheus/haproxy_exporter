@@ -75,12 +75,11 @@ $(GOCC):
 	mkdir -p $(GOROOT)
 	curl -L $(GOURL)/$(GOPKG) | tar -C $(GOROOT) --strip 1 -xz
 
-selflink-stamp:
-	mkdir -p $(GOPATH)/src/github.com/prometheus
-	ln -s $(CURDIR) $(SELFLINK)
-	touch $@
+$(SELFLINK):
+	mkdir -p $(dir $@)
+	ln -s $(CURDIR) $@
 
-dependencies-stamp: $(SRC) selflink-stamp
+dependencies-stamp: $(SRC) | $(SELFLINK)
 	$(GO) get -d
 	touch $@
 
