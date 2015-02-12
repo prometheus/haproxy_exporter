@@ -44,11 +44,16 @@ endif
 GO_VERSION ?= 1.4.1
 GOURL      ?= https://golang.org/dl
 GOPKG      ?= go$(GO_VERSION).$(GOOS)-$(GOARCH)$(RELEASE_SUFFIX).tar.gz
-GOROOT     := $(CURDIR)/.build/go
 GOPATH     := $(CURDIR)/.build/gopath
 GOCC       ?= $(GOROOT)/bin/go
 GO         ?= GOROOT=$(GOROOT) GOPATH=$(GOPATH) $(GOCC)
 GOFMT      ?= $(GOROOT)/bin/gofmt
+
+ifeq ($(shell go version | sed 's/.*go\([0-9.]*\).*/\1/'), $(GO_VERSION))
+	GOROOT := $(shell go env GOROOT)
+else
+	GOROOT := $(CURDIR)/.build/go$(GO_VERSION)
+endif
 
 # Never honor GOBIN, should it be set at all.
 unexport GOBIN
@@ -61,21 +66,20 @@ SELFLINK ?= $(GOPATH)/src/$(ROOTPKG)
 
 default: $(BINARY)
 
-.build/$(GOPKG):
+$(GOCC):
+	@echo Go version $(GO_VERSION) required but not found in PATH.
+	@echo About to download and install go$(GO_VERSION) to $(GOROOT)
+	@echo Abort now if you want to manually install it system-wide instead.
+	@echo
+	@sleep 5
 	mkdir -p $(GOROOT)
-	mkdir -p $(GOPATH)
-	curl -o .build/$(GOPKG) -L $(GOURL)/$(GOPKG)
+	curl -L $(GOURL)/$(GOPKG) | tar -C $(GOROOT) --strip 1 -xz
 
-$(GOCC): .build/$(GOPKG)
-	tar -C .build -xzf .build/$(GOPKG)
-	touch $@
+$(SELFLINK):
+	mkdir -p $(dir $@)
+	ln -s $(CURDIR) $@
 
-selflink-stamp:
-	mkdir -p $(GOPATH)/src/github.com/prometheus
-	ln -s $(CURDIR) $(SELFLINK)
-	touch $@
-
-dependencies-stamp: $(SRC) selflink-stamp
+dependencies-stamp: $(SRC) | $(SELFLINK)
 	$(GO) get -d
 	touch $@
 
