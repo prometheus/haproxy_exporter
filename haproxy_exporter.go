@@ -147,7 +147,7 @@ func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Dura
 			8:  newFrontendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 			9:  newFrontendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
 			10: newFrontendMetric("requests_denied_total", "Total of requests denied for security.", nil),
-			12: newBackendMetric("request_errors_total", "Total of request errors.", nil),
+			12: newFrontendMetric("request_errors_total", "Total of request errors.", nil),
 			33: newFrontendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 			35: newFrontendMetric("max_session_rate", "Maximum number of sessions per second.", nil),
 			39: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
