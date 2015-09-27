@@ -26,6 +26,7 @@ const (
 	// HAProxy 1.5
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,
 	expectedCsvFieldCount = 52
+	statusField           = 17
 )
 
 var (
@@ -321,6 +322,16 @@ func (e *Exporter) setMetrics(csvRows <-chan []string) {
 	}
 }
 
+func parseStatusField(value string) int64 {
+	switch value {
+	case "UP", "UP 1/3", "UP 2/3", "OPEN", "no check":
+		return 1
+	case "DOWN", "DOWN 1/2", "NOLB", "MAINT":
+		return 0
+	}
+	return 0
+}
+
 func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow []string, labels ...string) {
 	for fieldIdx, metric := range metrics {
 		valueStr := csvRow[fieldIdx]
@@ -329,19 +340,11 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 		}
 
 		var value int64
-		var err error
-		switch valueStr {
-		// UP or UP going down
-		case "UP", "UP 1/3", "UP 2/3":
-			value = 1
-		// DOWN or DOWN going up
-		case "DOWN", "DOWN 1/2":
-			value = 0
-		case "OPEN":
-			value = 0
-		case "no check":
-			continue
+		switch fieldIdx {
+		case statusField:
+			value = parseStatusField(valueStr)
 		default:
+			var err error
 			value, err = strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
 				log.Printf("Error while parsing CSV field value %s: %v", valueStr, err)
