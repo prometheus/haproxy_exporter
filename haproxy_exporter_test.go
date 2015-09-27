@@ -163,6 +163,34 @@ func TestDeadline(t *testing.T) {
 	}
 }
 
+func TestParseStatusField(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+	}{
+		{"UP", 1},
+		{"UP 1/3", 1},
+		{"UP 2/3", 1},
+		{"OPEN", 1},
+		{"no check", 1},
+		{"DOWN", 0},
+		{"DOWN 1/2", 0},
+		{"NOLB", 0},
+		{"MAINT", 0}, // prometheus/haproxy_exporter#35
+		{"unknown", 0},
+	}
+
+	for _, tt := range tests {
+		if have := parseStatusField(tt.input); tt.want != have {
+			t.Errorf("want status value %d for input %s, have %s",
+				tt.want,
+				tt.input,
+				have,
+			)
+		}
+	}
+}
+
 func BenchmarkExtract(b *testing.B) {
 	config, err := ioutil.ReadFile("test/haproxy.csv")
 	if err != nil {
