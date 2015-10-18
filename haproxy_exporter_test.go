@@ -87,7 +87,7 @@ func TestInvalidConfig(t *testing.T) {
 }
 
 func TestServerWithoutChecks(t *testing.T) {
-	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
+	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,"))
 	defer h.Close()
 
 	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
