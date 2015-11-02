@@ -112,6 +112,7 @@ func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Dura
 		18: newServerMetric("weight", "Current weight of the server.", nil),
 		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 		35: newServerMetric("max_session_rate", "Maximum number of sessions per second.", nil),
+		38: newServerMetric("check_duration_milliseconds", "Previously run health check duration, in milliseconds", nil),
 		39: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
 		40: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
 		41: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
