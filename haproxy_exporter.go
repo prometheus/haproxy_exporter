@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/log"
+	"github.com/prometheus/common/log"
 )
 
 const (
@@ -246,7 +246,7 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 	resp, err := e.client.Get(e.URI)
 	if err != nil {
 		e.up.Set(0)
-		log.Printf("Error while scraping HAProxy: %v", err)
+		log.Errorf("Can't scrape HAProxy: %v", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -262,7 +262,7 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 			break
 		}
 		if err != nil {
-			log.Printf("Error while reading CSV: %v", err)
+			log.Errorf("Can't read CSV: %v", err)
 			e.csvParseFailures.Inc()
 			break
 		}
@@ -300,7 +300,7 @@ func (e *Exporter) collectMetrics(metrics chan<- prometheus.Metric) {
 func (e *Exporter) setMetrics(csvRows <-chan []string) {
 	for csvRow := range csvRows {
 		if len(csvRow) < expectedCsvFieldCount {
-			log.Printf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
+			log.Errorf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
 			e.csvParseFailures.Inc()
 			continue
 		}
@@ -351,7 +351,7 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 			var err error
 			value, err = strconv.ParseInt(valueStr, 10, 64)
 			if err != nil {
-				log.Printf("Error while parsing CSV field value %s: %v", valueStr, err)
+				log.Errorf("Can't parse CSV field value %s: %v", valueStr, err)
 				e.csvParseFailures.Inc()
 				continue
 			}
@@ -379,18 +379,18 @@ func main() {
 			func() (int, error) {
 				content, err := ioutil.ReadFile(*haProxyPidFile)
 				if err != nil {
-					return 0, fmt.Errorf("error reading pid file: %s", err)
+					return 0, fmt.Errorf("Can't read pid file: %s", err)
 				}
 				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
 				if err != nil {
-					return 0, fmt.Errorf("error parsing pid file: %s", err)
+					return 0, fmt.Errorf("Can't parse pid file: %s", err)
 				}
 				return value, nil
 			}, namespace)
 		prometheus.MustRegister(procExporter)
 	}
 
-	log.Printf("Starting Server: %s", *listenAddress)
+	log.Infof("Starting Server: %s", *listenAddress)
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
