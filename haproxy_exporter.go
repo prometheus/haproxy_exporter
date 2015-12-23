@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,34 +72,23 @@ func newServerMetric(metricName string, docString string, constLabels prometheus
 	)
 }
 
-// Exporter collects HAProxy stats from the given URI and exports them using
-// the prometheus metrics package.
-type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+type metrics map[int]*prometheus.GaugeVec
 
-	up                                             prometheus.Gauge
-	totalScrapes, csvParseFailures                 prometheus.Counter
-	frontendMetrics, backendMetrics, serverMetrics map[int]*prometheus.GaugeVec
-	client                                         *http.Client
+func (m metrics) String() string {
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	s := make([]string, len(keys))
+	for i, k := range keys {
+		s[i] = strconv.Itoa(k)
+	}
+	return strings.Join(s, ",")
 }
 
-// NewExporter returns an initialized Exporter.
-func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Duration) *Exporter {
-	serverMetrics := map[int]*prometheus.GaugeVec{}
-
-	serverMetricFields := make(map[int]bool)
-	if haProxyServerMetricFields != "" {
-		for _, f := range strings.Split(haProxyServerMetricFields, ",") {
-			field, err := strconv.Atoi(f)
-			if err != nil {
-				log.Fatalf("Invalid field number: %v", f)
-			}
-			serverMetricFields[field] = true
-		}
-	}
-
-	for index, metric := range map[int]*prometheus.GaugeVec{
+var (
+	serverMetrics = metrics{
 		4:  newServerMetric("current_sessions", "Current number of active sessions.", nil),
 		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 		7:  newServerMetric("connections_total", "Total number of connections.", nil),
@@ -119,12 +109,23 @@ func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Dura
 		42: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 		43: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 		44: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
-	} {
-		if len(serverMetricFields) == 0 || serverMetricFields[index] {
-			serverMetrics[index] = metric
-		}
 	}
+)
 
+// Exporter collects HAProxy stats from the given URI and exports them using
+// the prometheus metrics package.
+type Exporter struct {
+	URI   string
+	mutex sync.RWMutex
+
+	up                                             prometheus.Gauge
+	totalScrapes, csvParseFailures                 prometheus.Counter
+	frontendMetrics, backendMetrics, serverMetrics map[int]*prometheus.GaugeVec
+	client                                         *http.Client
+}
+
+// NewExporter returns an initialized Exporter.
+func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) *Exporter {
 	return &Exporter{
 		URI: uri,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -186,7 +187,7 @@ func NewExporter(uri string, haProxyServerMetricFields string, timeout time.Dura
 			43: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 			44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 		},
-		serverMetrics: serverMetrics,
+		serverMetrics: selectedServerMetrics,
 		client: &http.Client{
 			Transport: &http.Transport{
 				Dial: func(netw, addr string) (net.Conn, error) {
@@ -360,18 +361,48 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 	}
 }
 
+// filterServerMetrics returns the set of server metrics specified by the comma
+// separated filter.
+func filterServerMetrics(filter string) (map[int]*prometheus.GaugeVec, error) {
+	metrics := map[int]*prometheus.GaugeVec{}
+	if len(filter) == 0 {
+		return metrics, nil
+	}
+
+	selected := map[int]struct{}{}
+	for _, f := range strings.Split(filter, ",") {
+		field, err := strconv.Atoi(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid server metric field number: %v", f)
+		}
+		selected[field] = struct{}{}
+	}
+
+	for field, metric := range serverMetrics {
+		if _, ok := selected[field]; ok {
+			metrics[field] = metric
+		}
+	}
+	return metrics, nil
+}
+
 func main() {
 	var (
 		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
 		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		haProxyScrapeUri          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", "", "If specified, only export the given csv fields. Comma-seperated list of numbers. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
+		haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
+		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
 	)
 	flag.Parse()
 
-	exporter := NewExporter(*haProxyScrapeUri, *haProxyServerMetricFields, *haProxyTimeout)
+	selectedServerMetrics, err := filterServerMetrics(*haProxyServerMetricFields)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	exporter := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
 	prometheus.MustRegister(exporter)
 
 	if *haProxyPidFile != "" {

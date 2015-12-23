@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -54,7 +55,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "", 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -83,7 +84,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,,,,,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "", 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -112,7 +113,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e := NewExporter(h.URL, "", 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -139,7 +140,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e := NewExporter(s.URL, "", 1*time.Second)
+	e := NewExporter(s.URL, serverMetrics, 1*time.Second)
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -182,7 +183,33 @@ func TestParseStatusField(t *testing.T) {
 
 	for _, tt := range tests {
 		if have := parseStatusField(tt.input); tt.want != have {
-			t.Errorf("want status value %d for input %s, have %s",
+			t.Errorf("want status value %d for input %s, have %d",
+				tt.want,
+				tt.input,
+				have,
+			)
+		}
+	}
+}
+
+func TestFilterServerMetrics(t *testing.T) {
+	tests := []struct {
+		input string
+		want  map[int]*prometheus.GaugeVec
+	}{
+		{input: "", want: map[int]*prometheus.GaugeVec{}},
+		{input: "8", want: map[int]*prometheus.GaugeVec{8: serverMetrics[8]}},
+		{input: serverMetrics.String(), want: serverMetrics},
+	}
+
+	for _, tt := range tests {
+		have, err := filterServerMetrics(tt.input)
+		if err != nil {
+			t.Errorf("unexpected error for input %s: %s", tt.input, err)
+			continue
+		}
+		if !reflect.DeepEqual(tt.want, have) {
+			t.Errorf("want filtered metrics %s for input %s, have %s",
 				tt.want,
 				tt.input,
 				have,
@@ -200,7 +227,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e := NewExporter(h.URL, "", 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
 
 	var before, after runtime.MemStats
 	runtime.GC()
