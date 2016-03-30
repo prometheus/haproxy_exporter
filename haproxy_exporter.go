@@ -89,6 +89,8 @@ func (m metrics) String() string {
 
 var (
 	serverMetrics = metrics{
+		2:  newServerMetric("current_queue", "Current number of queued requests assigned to this server.", nil),
+		3:  newServerMetric("max_queue", "Maximum observed number of queued requests assigned to this server.", nil),
 		4:  newServerMetric("current_sessions", "Current number of active sessions.", nil),
 		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 		7:  newServerMetric("connections_total", "Total number of connections.", nil),
@@ -164,8 +166,8 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			48: newFrontendMetric("http_requests_total", "Total HTTP requests.", nil),
 		},
 		backendMetrics: map[int]*prometheus.GaugeVec{
-			2:  newBackendMetric("current_queue", "Current server queue length.", nil),
-			3:  newBackendMetric("max_queue", "Maximum observed server queue length.", nil),
+			2:  newBackendMetric("current_queue", "Current number of queued requests not assigned to any server.", nil),
+			3:  newBackendMetric("max_queue", "Maximum observed number of queued requests not assigned to any server.", nil),
 			4:  newBackendMetric("current_sessions", "Current number of active sessions.", nil),
 			5:  newBackendMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 			6:  newBackendMetric("limit_sessions", "Configured session limit.", nil),
