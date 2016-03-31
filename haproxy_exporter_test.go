@@ -104,8 +104,56 @@ func TestServerWithoutChecks(t *testing.T) {
 		// csvParseFailures
 		t.Errorf("expected %f csv parse failures, got %f", expect, got)
 	}
-	// Suck up the remaining metrics.
-	for _ = range ch {
+
+	got := 0
+	for range ch {
+		got += 1
+	}
+	if expect := len(e.serverMetrics) - 1; got != expect {
+		t.Errorf("expected %d metrics, got %d", expect, got)
+	}
+}
+
+// TestServerBrokenCSV ensures bugs in CSV format are handled gracefully. List of known bugs:
+//
+//   * http://permalink.gmane.org/gmane.comp.web.haproxy/26561
+//
+func TestServerBrokenCSV(t *testing.T) {
+	const data = `foo,FRONTEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
+foo,bug-missing-comma,0,0,0,0,,0,0,0,,0,,0,0,0,0,DRAIN (agent)1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
+foo,foo-instance-0,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
+foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
+`
+	h := newHaproxy([]byte(data))
+	defer h.Close()
+
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
+	}
+
+	got := 0
+	for range ch {
+		got += 1
+	}
+	if expect := len(e.frontendMetrics) + len(e.backendMetrics); got < expect {
+		t.Errorf("expected at least %d metrics, got %d", expect, got)
 	}
 }
 

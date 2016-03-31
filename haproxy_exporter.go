@@ -267,7 +267,7 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 		if err != nil {
 			log.Errorf("Can't read CSV: %v", err)
 			e.csvParseFailures.Inc()
-			break
+			continue
 		}
 		if len(row) == 0 {
 			continue
