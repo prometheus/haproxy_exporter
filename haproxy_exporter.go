@@ -259,18 +259,21 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 	reader.TrailingComma = true
 	reader.Comment = '#'
 
+loop:
 	for {
 		row, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
+		switch err {
+		case nil:
+		case io.EOF:
+			break loop
+		case err.(*csv.ParseError):
 			log.Errorf("Can't read CSV: %v", err)
 			e.csvParseFailures.Inc()
-			continue
-		}
-		if len(row) == 0 {
-			continue
+			continue loop
+		default:
+			log.Errorf("Unexpected error while reading CSV: %v", err)
+			e.csvParseFailures.Inc()
+			break loop
 		}
 		csvRows <- row
 	}
