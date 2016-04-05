@@ -227,23 +227,19 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the stats from configured HAProxy location and delivers them
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	csvRows := make(chan []string)
-
-	go e.scrape(csvRows)
-
 	e.mutex.Lock() // To protect metrics from concurrent collects.
 	defer e.mutex.Unlock()
+
 	e.resetMetrics()
-	e.setMetrics(csvRows)
+	e.scrape()
+
 	ch <- e.up
 	ch <- e.totalScrapes
 	ch <- e.csvParseFailures
 	e.collectMetrics(ch)
 }
 
-func (e *Exporter) scrape(csvRows chan<- []string) {
-	defer close(csvRows)
-
+func (e *Exporter) scrape() {
 	e.totalScrapes.Inc()
 
 	resp, err := e.client.Get(e.URI)
@@ -275,7 +271,7 @@ loop:
 			e.csvParseFailures.Inc()
 			break loop
 		}
-		csvRows <- row
+		e.parseRow(row)
 	}
 }
 
@@ -303,32 +299,29 @@ func (e *Exporter) collectMetrics(metrics chan<- prometheus.Metric) {
 	}
 }
 
-func (e *Exporter) setMetrics(csvRows <-chan []string) {
-	for csvRow := range csvRows {
-		if len(csvRow) < expectedCsvFieldCount {
-			log.Errorf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
-			e.csvParseFailures.Inc()
-			continue
-		}
+func (e *Exporter) parseRow(csvRow []string) {
+	if len(csvRow) < expectedCsvFieldCount {
+		log.Errorf("Wrong CSV field count: %d vs. %d", len(csvRow), expectedCsvFieldCount)
+		e.csvParseFailures.Inc()
+		return
+	}
 
-		pxname, svname, type_ := csvRow[0], csvRow[1], csvRow[32]
+	pxname, svname, type_ := csvRow[0], csvRow[1], csvRow[32]
 
-		const (
-			frontend = "0"
-			backend  = "1"
-			server   = "2"
-			listener = "3"
-		)
+	const (
+		frontend = "0"
+		backend  = "1"
+		server   = "2"
+		listener = "3"
+	)
 
-		switch type_ {
-		case frontend:
-			e.exportCsvFields(e.frontendMetrics, csvRow, pxname)
-		case backend:
-			e.exportCsvFields(e.backendMetrics, csvRow, pxname)
-		case server:
-			e.exportCsvFields(e.serverMetrics, csvRow, pxname, svname)
-		}
-
+	switch type_ {
+	case frontend:
+		e.exportCsvFields(e.frontendMetrics, csvRow, pxname)
+	case backend:
+		e.exportCsvFields(e.backendMetrics, csvRow, pxname)
+	case server:
+		e.exportCsvFields(e.serverMetrics, csvRow, pxname, svname)
 	}
 }
 
