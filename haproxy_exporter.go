@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -117,8 +118,10 @@ var (
 // Exporter collects HAProxy stats from the given URI and exports them using
 // the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+	URI          string
+	mutex        sync.RWMutex
+	HttpUserName string
+	HttpPassword string
 
 	up                                             prometheus.Gauge
 	totalScrapes, csvParseFailures                 prometheus.Counter
@@ -127,9 +130,11 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) *Exporter {
+func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration, username, password string) *Exporter {
 	return &Exporter{
-		URI: uri,
+		URI:          uri,
+		HttpUserName: username,
+		HttpPassword: password,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
@@ -191,6 +196,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 		},
 		serverMetrics: selectedServerMetrics,
 		client: &http.Client{
+			CheckRedirect: redirectPolicyFunc,
 			Transport: &http.Transport{
 				Dial: func(netw, addr string) (net.Conn, error) {
 					c, err := net.DialTimeout(netw, addr, timeout)
@@ -205,6 +211,14 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			},
 		},
 	}
+}
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
+	req.Header.Add("Authorization", "Basic "+basicAuth("stats", "testing123"))
+	return nil
 }
 
 // Describe describes all the metrics ever exported by the HAProxy exporter. It
@@ -246,7 +260,15 @@ func (e *Exporter) scrape(csvRows chan<- []string) {
 
 	e.totalScrapes.Inc()
 
-	resp, err := e.client.Get(e.URI)
+	req, err := http.NewRequest("GET", e.URI, nil)
+	if err != nil {
+		return
+	}
+	if e.HttpUserName != "" {
+		req.SetBasicAuth(e.HttpUserName, e.HttpPassword)
+	}
+	resp, err := e.client.Do(req)
+
 	if err != nil {
 		e.up.Set(0)
 		log.Errorf("Can't scrape HAProxy: %v", err)
@@ -399,6 +421,8 @@ func main() {
 		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
+		haProxyUserName           = flag.String("haproxy.username", "", "Username to use when scraping the stats page.")
+		haProxyPassword           = flag.String("haproxy.password", "", "Password to use in conjunction with username when scraping the stats page.")
 	)
 	flag.Parse()
 
@@ -407,7 +431,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	exporter := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
+	exporter := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout, *haProxyUserName, *haProxyPassword)
 	prometheus.MustRegister(exporter)
 
 	if *haProxyPidFile != "" {

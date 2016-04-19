@@ -55,7 +55,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second, "", "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -84,7 +84,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,,,,,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second, "", "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -127,7 +127,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second, "", "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -161,7 +161,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second, "", "")
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -188,7 +188,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	e := NewExporter(s.URL, serverMetrics, 1*time.Second, "", "")
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -275,7 +275,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e := NewExporter(h.URL, serverMetrics, 5*time.Second, "", "")
 
 	var before, after runtime.MemStats
 	runtime.GC()
