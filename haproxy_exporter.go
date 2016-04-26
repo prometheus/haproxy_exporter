@@ -102,6 +102,8 @@ var (
 		16: newServerMetric("redispatch_warnings_total", "Total of redispatch warnings.", nil),
 		17: newServerMetric("up", "Current health status of the server (1 = UP, 0 = DOWN).", nil),
 		18: newServerMetric("weight", "Current weight of the server.", nil),
+		21: newServerMetric("check_failures_total", "Total number of failed health checks.", nil),
+		24: newServerMetric("downtime_seconds_total", "Total downtime in seconds.", nil),
 		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 		35: newServerMetric("max_session_rate", "Maximum observed number of sessions per second.", nil),
 		38: newServerMetric("check_duration_milliseconds", "Previously run health check duration, in milliseconds", nil),
