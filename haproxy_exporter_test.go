@@ -212,6 +212,23 @@ func TestDeadline(t *testing.T) {
 	}
 }
 
+func TestNotFound(t *testing.T) {
+	s := httptest.NewServer(http.NotFoundHandler())
+	defer s.Close()
+
+	e := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+}
+
 func TestParseStatusField(t *testing.T) {
 	tests := []struct {
 		input string

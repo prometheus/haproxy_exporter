@@ -251,6 +251,11 @@ func (e *Exporter) scrape() {
 		return
 	}
 	defer resp.Body.Close()
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+		e.up.Set(0)
+		log.Errorf("Can't scrape HAProxy: status %d", resp.StatusCode)
+		return
+	}
 	e.up.Set(1)
 
 	reader := csv.NewReader(resp.Body)
