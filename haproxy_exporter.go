@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
 )
 
 const (
@@ -399,16 +401,26 @@ func main() {
 		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
+		showVersion               = flag.Bool("version", false, "Print version information.")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Fprintln(os.Stdout, version.Print("haproxy_exporter"))
+		os.Exit(0)
+	}
 
 	selectedServerMetrics, err := filterServerMetrics(*haProxyServerMetricFields)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	log.Infoln("Starting haproxy_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
+
 	exporter := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
 	prometheus.MustRegister(exporter)
+	prometheus.MustRegister(version.NewCollector("haproxy_exporter"))
 
 	if *haProxyPidFile != "" {
 		procExporter := prometheus.NewProcessCollectorPIDFn(
@@ -426,7 +438,7 @@ func main() {
 		prometheus.MustRegister(procExporter)
 	}
 
-	log.Infof("Starting Server: %s", *listenAddress)
+	log.Infoln("Listening on", *listenAddress)
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>

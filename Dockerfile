@@ -1,4 +1,7 @@
-FROM        sdurrheimer/alpine-golang-make-onbuild
+FROM        quay.io/prometheus/busybox:latest
 MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
 
-EXPOSE      9101
+COPY haproxy_exporter /bin/haproxy_exporter
+
+ENTRYPOINT ["/bin/haproxy_exporter"]
+EXPOSE     9101
