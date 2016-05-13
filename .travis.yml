@@ -1,9 +1,5 @@
 language: go
-go: 1.4
-
-before_script:
- - go get -v github.com/prometheus/haproxy_exporter
+go: 1.6.2
 
 script:
- - go build -a -v github.com/prometheus/haproxy_exporter/...
- - go test -v github.com/prometheus/haproxy_exporter/...
+ - make test
