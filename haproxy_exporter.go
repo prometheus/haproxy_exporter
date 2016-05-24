@@ -33,9 +33,9 @@ const (
 )
 
 var (
-	frontendLabelNames = []string{"pid", "frontend"}
-	backendLabelNames  = []string{"pid", "backend"}
-	serverLabelNames   = []string{"pid", "backend", "server"}
+	frontendLabelNames = []string{"process", "frontend"}
+	backendLabelNames  = []string{"process", "backend"}
+	serverLabelNames   = []string{"process", "backend", "server"}
 )
 
 func newFrontendMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.GaugeVec {
@@ -315,7 +315,7 @@ func (e *Exporter) parseRow(csvRow []string) {
 		return
 	}
 
-	pxname, svname, pid, type_ := csvRow[0], csvRow[1], csvRow[26], csvRow[32]
+	pxname, svname, process, type_ := csvRow[0], csvRow[1], csvRow[26], csvRow[32]
 
 	const (
 		frontend = "0"
@@ -326,11 +326,11 @@ func (e *Exporter) parseRow(csvRow []string) {
 
 	switch type_ {
 	case frontend:
-		e.exportCsvFields(e.frontendMetrics, csvRow, pid, pxname)
+		e.exportCsvFields(e.frontendMetrics, csvRow, process, pxname)
 	case backend:
-		e.exportCsvFields(e.backendMetrics, csvRow, pid, pxname)
+		e.exportCsvFields(e.backendMetrics, csvRow, process, pxname)
 	case server:
-		e.exportCsvFields(e.serverMetrics, csvRow, pid, pxname, svname)
+		e.exportCsvFields(e.serverMetrics, csvRow, process, pxname, svname)
 	}
 }
 
