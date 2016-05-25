@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -393,21 +394,73 @@ func filterServerMetrics(filter string) (map[int]*prometheus.GaugeVec, error) {
 	return metrics, nil
 }
 
-func main() {
-	var (
-		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
-		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
-		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
-		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
-		showVersion               = flag.Bool("version", false, "Print version information.")
-	)
-	flag.Parse()
+func loadConfigFile(path string) Configuration {
+	file, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal("Config File Missing. ", err)
+	}
 
+
+	var config Configuration
+	err = json.Unmarshal(file, &config)
+	if err != nil {
+		log.Fatal("Config Parse Error: ", err)
+	}
+	return config
+}
+
+type Configuration struct {
+	ListenAddress             string        `json:"listen_address"`
+	MetricsPath               string        `json:"metrics_Path"`
+	HaProxyScrapeURI          string        `json:"haproxy_scrape_uri"`
+	HaProxyServerMetricFields string        `json:"haproxy_server_metric_fields "`
+	HaProxyTimeout            time.Duration `json:"haproxy_timeout"`
+	HaProxyPidFile            string        `json:"haproxy_pid_file"`
+}
+
+func mergeConfig(config Configuration) {
+	if config.ListenAddress != "" && *listenAddress == ":9101" {
+		*listenAddress = config.ListenAddress
+	}
+	if config.MetricsPath != "" && *metricsPath == "/metrics" {
+		*metricsPath = config.MetricsPath
+	}
+	if config.HaProxyScrapeURI != "" && *haProxyScrapeURI == "http://localhost/;csv" {
+		*haProxyScrapeURI = config.HaProxyScrapeURI
+	}
+	if config.HaProxyServerMetricFields != "" && *haProxyServerMetricFields == serverMetrics.String() {
+		*haProxyServerMetricFields = config.HaProxyServerMetricFields
+	}
+	if config.HaProxyTimeout != 0 && *haProxyTimeout == 5*time.Second {
+		*haProxyTimeout = config.HaProxyTimeout * time.Second
+    }
+	if config.HaProxyPidFile != "" && *haProxyPidFile == "" {
+		*haProxyPidFile = config.HaProxyPidFile
+	}
+}
+
+var (
+	listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
+	metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
+	haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
+	haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
+	haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
+	showVersion               = flag.Bool("version", false, "Print version information.")
+	configFile                = flag.String("c", "", "Configuration file.")
+)
+
+func main() {
+
+	flag.Parse()
 	if *showVersion {
 		fmt.Fprintln(os.Stdout, version.Print("haproxy_exporter"))
 		os.Exit(0)
+	}
+
+	if *configFile != "" {
+		log.Infoln("Config file", *configFile)
+		mergeConfig(loadConfigFile(*configFile))
 	}
 
 	selectedServerMetrics, err := filterServerMetrics(*haProxyServerMetricFields)
