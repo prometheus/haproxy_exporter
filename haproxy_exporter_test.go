@@ -260,10 +260,10 @@ func TestParseStatusField(t *testing.T) {
 func TestFilterServerMetrics(t *testing.T) {
 	tests := []struct {
 		input string
-		want  map[int]*prometheus.GaugeVec
+		want  metricsMap
 	}{
-		{input: "", want: map[int]*prometheus.GaugeVec{}},
-		{input: "8", want: map[int]*prometheus.GaugeVec{8: serverMetrics[8]}},
+		{input: "", want: metricsMap{}},
+		{input: "8", want: metricsMap{8: serverMetrics[8]}},
 		{input: serverMetrics.String(), want: serverMetrics},
 	}
 
