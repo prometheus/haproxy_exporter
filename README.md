@@ -38,6 +38,21 @@ haproxy_exporter -haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;c
 
 Note that the `;csv` is mandatory (and needs to be quoted).
 
+## Custom config file
+
+Specify a custom config file with `-c config.json` flag.
+For example
+```json
+{
+  "listen_address": ":11111",
+  "metrics_Path": "/prom_metrics",
+  "haproxy_scrape_uri": "http://127.0.0.1/haproxy?stats;csv",
+  "haproxy_server_metric_fields": "2,3,4,5,7,8,9,13,14,15,16,17,18,21,24,33,35,38,39,40,41,42,43,44",
+  "haproxy_timeout": 2,
+  "haproxy_pid_file": "/var/run/haproxy.pid"
+}
+```
+
 
 ## Basic Auth
 

@@ -107,7 +107,7 @@ func TestServerWithoutChecks(t *testing.T) {
 
 	got := 0
 	for range ch {
-		got += 1
+		got++
 	}
 	if expect := len(e.serverMetrics) - 1; got != expect {
 		t.Errorf("expected %d metrics, got %d", expect, got)
@@ -150,7 +150,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 
 	got := 0
 	for range ch {
-		got += 1
+		got++
 	}
 	if expect := len(e.frontendMetrics) + len(e.backendMetrics); got < expect {
 		t.Errorf("expected at least %d metrics, got %d", expect, got)
