@@ -27,42 +27,6 @@ var (
 	serverLabelNames   = []string{"backend", "server"}
 )
 
-func newFrontendMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.GaugeVec {
-	return prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace:   namespace,
-			Name:        "frontend_" + metricName,
-			Help:        docString,
-			ConstLabels: constLabels,
-		},
-		frontendLabelNames,
-	)
-}
-
-func newBackendMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.GaugeVec {
-	return prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace:   namespace,
-			Name:        "backend_" + metricName,
-			Help:        docString,
-			ConstLabels: constLabels,
-		},
-		backendLabelNames,
-	)
-}
-
-func newServerMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.GaugeVec {
-	return prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace:   namespace,
-			Name:        "server_" + metricName,
-			Help:        docString,
-			ConstLabels: constLabels,
-		},
-		serverLabelNames,
-	)
-}
-
 type metricsMap map[int]*MetricVecProxy
 
 func newMetricsMap(prefix string, labelNames []string, idxs []int) metricsMap {
