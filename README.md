@@ -47,6 +47,19 @@ If your stats port is protected by [basic auth](https://cbonte.github.io/haproxy
 haproxy_exporter  -haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
 
+## Unix Sockets
+
+As alternative to localhost HTTP a stats socket can be used. Enable the stats
+socket in HAProxy with for example:
+```
+stats socket /run/haproxy/admin.sock mode 660 level admin
+```
+
+The scrape URL uses the 'unix:' scheme:
+```bash
+haproxy_exporter -haproxy.scrape-uri=unix:/run/haproxy/admin.sock
+```
+
 ## Docker
 
 To run the haproxy exporter as a Docker container, run:
