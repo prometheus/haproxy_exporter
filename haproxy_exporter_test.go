@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"runtime"
 	"testing"
@@ -13,6 +17,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+const testSocket = "/tmp/haproxyexportertest.sock"
 
 type haproxy struct {
 	*httptest.Server
@@ -55,7 +61,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -84,7 +90,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,"))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -127,7 +133,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -161,7 +167,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -188,7 +194,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	e, _ := NewExporter(s.URL, serverMetrics, 1*time.Second)
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -216,7 +222,7 @@ func TestNotFound(t *testing.T) {
 	s := httptest.NewServer(http.NotFoundHandler())
 	defer s.Close()
 
-	e := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	e, _ := NewExporter(s.URL, serverMetrics, 1*time.Second)
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -226,6 +232,186 @@ func TestNotFound(t *testing.T) {
 	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
 		// up
 		t.Errorf("expected %f up, got %f", expect, got)
+	}
+}
+
+func newHaproxyUnix(file, statsPayload string) (io.Closer, error) {
+	if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	l, err := net.Listen("unix", file)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func(c net.Conn) {
+				defer c.Close()
+				r := bufio.NewReader(c)
+				for {
+					l, err := r.ReadString('\n')
+					if err != nil {
+						return
+					}
+					switch l {
+					case "show stat\n":
+						c.Write([]byte(statsPayload))
+						return
+					default:
+						// invalid command
+						return
+					}
+				}
+			}(c)
+		}
+	}()
+	return l, nil
+}
+
+func TestUnixDomain(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("not on windows")
+		return
+	}
+	srv, err := newHaproxyUnix(testSocket, "test,127.0.0.1:8080,0,0,0,0,,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,\n")
+	if err != nil {
+		t.Fatalf("can't start test server: %v", err)
+	}
+	defer srv.Close()
+
+	e, err := NewExporter("unix:"+testSocket, serverMetrics, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
+	}
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
+	}
+
+	got := 0
+	for range ch {
+		got += 1
+	}
+	if expect := len(e.serverMetrics) - 1; got != expect {
+		t.Errorf("expected %d metrics, got %d", expect, got)
+	}
+}
+
+func TestUnixDomainNotFound(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("not on windows")
+		return
+	}
+
+	if err := os.Remove(testSocket); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	e, _ := NewExporter("unix:"+testSocket, serverMetrics, 1*time.Second)
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
+	}
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
+	}
+	if <-ch != nil {
+		t.Errorf("expected closed channel")
+	}
+}
+
+func TestUnixDomainDeadline(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("not on windows")
+		return
+	}
+
+	exit := make(chan struct{})
+	defer close(exit)
+
+	if err := os.Remove(testSocket); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	l, err := net.Listen("unix", testSocket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	go func() {
+		for {
+			if _, err := l.Accept(); err != nil {
+				return
+			}
+			go func() {
+				// block
+				<-exit
+			}()
+		}
+	}()
+
+	e, _ := NewExporter("unix:"+testSocket, serverMetrics, 1*time.Second)
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
+	}
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
+	}
+	if <-ch != nil {
+		t.Errorf("expected closed channel")
+	}
+}
+
+func TestInvalidScheme(t *testing.T) {
+	e, err := NewExporter("gopher://gopher.quux.org", serverMetrics, 1*time.Second)
+	if expect, got := (*Exporter)(nil), e; expect != got {
+		t.Errorf("expected %v, got %v", expect, got)
+	}
+	if err == nil {
+		t.Fatalf("expected non-nil error")
+	}
+	if expect, got := err.Error(), `unsupported scheme: "gopher"`; expect != got {
+		t.Errorf("expected %q, got %q", expect, got)
 	}
 }
 
@@ -292,7 +478,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
 
 	var before, after runtime.MemStats
 	runtime.GC()

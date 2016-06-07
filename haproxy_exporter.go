@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -123,17 +125,33 @@ var (
 type Exporter struct {
 	URI   string
 	mutex sync.RWMutex
+	fetch func() (io.ReadCloser, error)
 
 	up                                             prometheus.Gauge
 	totalScrapes, csvParseFailures                 prometheus.Counter
 	frontendMetrics, backendMetrics, serverMetrics map[int]*prometheus.GaugeVec
-	client                                         *http.Client
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) *Exporter {
+func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) (*Exporter, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var fetch func() (io.ReadCloser, error)
+	switch u.Scheme {
+	case "http", "https", "file":
+		fetch = fetchHTTP(uri, timeout)
+	case "unix":
+		fetch = fetchUnix(u, timeout)
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %q", u.Scheme)
+	}
+
 	return &Exporter{
-		URI: uri,
+		URI:   uri,
+		fetch: fetch,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
@@ -194,21 +212,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 		},
 		serverMetrics: selectedServerMetrics,
-		client: &http.Client{
-			Transport: &http.Transport{
-				Dial: func(netw, addr string) (net.Conn, error) {
-					c, err := net.DialTimeout(netw, addr, timeout)
-					if err != nil {
-						return nil, err
-					}
-					if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
-						return nil, err
-					}
-					return c, nil
-				},
-			},
-		},
-	}
+	}, nil
 }
 
 // Describe describes all the metrics ever exported by the HAProxy exporter. It
@@ -243,24 +247,72 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectMetrics(ch)
 }
 
+func fetchHTTP(uri string, timeout time.Duration) func() (io.ReadCloser, error) {
+	client := http.Client{
+		Transport: &http.Transport{
+			Dial: func(netw, addr string) (net.Conn, error) {
+				c, err := net.DialTimeout(netw, addr, timeout)
+				if err != nil {
+					return nil, err
+				}
+				if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+					return nil, err
+				}
+				return c, nil
+			},
+		},
+	}
+
+	return func() (io.ReadCloser, error) {
+		resp, err := client.Get(uri)
+		if err != nil {
+			return nil, err
+		}
+		if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+			resp.Body.Close()
+			return nil, fmt.Errorf("HTTP status %d", resp.StatusCode)
+		}
+		return resp.Body, nil
+	}
+}
+
+func fetchUnix(u *url.URL, timeout time.Duration) func() (io.ReadCloser, error) {
+	return func() (io.ReadCloser, error) {
+		f, err := net.DialTimeout("unix", u.Path, timeout)
+		if err != nil {
+			return nil, err
+		}
+		if err := f.SetDeadline(time.Now().Add(timeout)); err != nil {
+			f.Close()
+			return nil, err
+		}
+		cmd := "show stat\n"
+		n, err := io.WriteString(f, cmd)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+		if n != len(cmd) {
+			f.Close()
+			return nil, errors.New("write error")
+		}
+		return f, nil
+	}
+}
+
 func (e *Exporter) scrape() {
 	e.totalScrapes.Inc()
 
-	resp, err := e.client.Get(e.URI)
+	body, err := e.fetch()
 	if err != nil {
 		e.up.Set(0)
 		log.Errorf("Can't scrape HAProxy: %v", err)
 		return
 	}
-	defer resp.Body.Close()
-	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
-		e.up.Set(0)
-		log.Errorf("Can't scrape HAProxy: status %d", resp.StatusCode)
-		return
-	}
+	defer body.Close()
 	e.up.Set(1)
 
-	reader := csv.NewReader(resp.Body)
+	reader := csv.NewReader(body)
 	reader.TrailingComma = true
 	reader.Comment = '#'
 
@@ -277,7 +329,7 @@ loop:
 			continue loop
 		default:
 			log.Errorf("Unexpected error while reading CSV: %v", err)
-			e.csvParseFailures.Inc()
+			e.up.Set(0)
 			break loop
 		}
 		e.parseRow(row)
@@ -418,7 +470,10 @@ func main() {
 	log.Infoln("Starting haproxy_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	exporter := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
+	exporter, err := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
+	if err != nil {
+		log.Fatal(err)
+	}
 	prometheus.MustRegister(exporter)
 	prometheus.MustRegister(version.NewCollector("haproxy_exporter"))
 
