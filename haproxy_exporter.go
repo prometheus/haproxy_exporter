@@ -249,18 +249,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 func fetchHTTP(uri string, timeout time.Duration) func() (io.ReadCloser, error) {
 	client := http.Client{
-		Transport: &http.Transport{
-			Dial: func(netw, addr string) (net.Conn, error) {
-				c, err := net.DialTimeout(netw, addr, timeout)
-				if err != nil {
-					return nil, err
-				}
-				if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
-					return nil, err
-				}
-				return c, nil
-			},
-		},
+		Timeout: timeout,
 	}
 
 	return func() (io.ReadCloser, error) {
