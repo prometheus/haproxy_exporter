@@ -312,11 +312,12 @@ loop:
 		case nil:
 		case io.EOF:
 			break loop
-		case err.(*csv.ParseError):
-			log.Errorf("Can't read CSV: %v", err)
-			e.csvParseFailures.Inc()
-			continue loop
 		default:
+			if _, ok := err.(*csv.ParseError); ok {
+				log.Errorf("Can't read CSV: %v", err)
+				e.csvParseFailures.Inc()
+				continue loop
+			}
 			log.Errorf("Unexpected error while reading CSV: %v", err)
 			e.up.Set(0)
 			break loop
