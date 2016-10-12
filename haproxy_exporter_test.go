@@ -22,18 +22,18 @@ const testSocket = "/tmp/haproxyexportertest.sock"
 
 type haproxy struct {
 	*httptest.Server
-	config []byte
+	response []byte
 }
 
-func newHaproxy(config []byte) *haproxy {
-	h := &haproxy{config: config}
+func newHaproxy(response []byte) *haproxy {
+	h := &haproxy{response: response}
 	h.Server = httptest.NewServer(handler(h))
 	return h
 }
 
 func handler(h *haproxy) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write(h.config)
+		w.Write(h.response)
 	}
 }
 
@@ -113,7 +113,7 @@ func TestServerWithoutChecks(t *testing.T) {
 
 	got := 0
 	for range ch {
-		got += 1
+		got++
 	}
 	if expect := len(e.serverMetrics) - 1; got != expect {
 		t.Errorf("expected %d metrics, got %d", expect, got)
@@ -156,7 +156,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 
 	got := 0
 	for range ch {
-		got += 1
+		got++
 	}
 	if expect := len(e.frontendMetrics) + len(e.backendMetrics); got < expect {
 		t.Errorf("expected at least %d metrics, got %d", expect, got)
@@ -194,7 +194,11 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e, _ := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -222,7 +226,11 @@ func TestNotFound(t *testing.T) {
 	s := httptest.NewServer(http.NotFoundHandler())
 	defer s.Close()
 
-	e, _ := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, serverMetrics, 1*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
