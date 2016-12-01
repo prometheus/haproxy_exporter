@@ -56,8 +56,13 @@ stats socket /run/haproxy/admin.sock mode 660 level admin
 ```
 
 The scrape URL uses the 'unix:' scheme:
+
 ```bash
+# simple usage
 haproxy_exporter -haproxy.scrape-uri=unix:/run/haproxy/admin.sock
+
+# for multiple processes usage
+haproxy_exporter -haproxy.scrape-uri=unix:/run/haproxy/*.sock
 ```
 
 ## Docker
