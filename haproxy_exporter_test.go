@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
@@ -462,16 +463,26 @@ func TestFilterServerMetrics(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		have, err := filterServerMetrics(tt.input)
+		have, err := filterServerMetrics(tt.input, "")
 		if err != nil {
 			t.Errorf("unexpected error for input %s: %s", tt.input, err)
 			continue
 		}
-		if !reflect.DeepEqual(tt.want, have) {
+		var haveKeys []int
+		for k := range have {
+			haveKeys = append(haveKeys, k)
+		}
+		sort.Ints(haveKeys)
+		var wantKeys []int
+		for k := range tt.want {
+			wantKeys = append(wantKeys, k)
+		}
+		sort.Ints(wantKeys)
+		if !reflect.DeepEqual(wantKeys, haveKeys) {
 			t.Errorf("want filtered metrics %s for input %s, have %s",
-				tt.want,
+				wantKeys,
 				tt.input,
-				have,
+				haveKeys,
 			)
 		}
 	}
