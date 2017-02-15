@@ -97,6 +97,7 @@ var (
 		3:  newServerMetric("max_queue", "Maximum observed number of queued requests assigned to this server.", nil),
 		4:  newServerMetric("current_sessions", "Current number of active sessions.", nil),
 		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", nil),
+		6:  newServerMetric("limit_sessions", "Configured session limit.", nil),
 		7:  newServerMetric("connections_total", "Total number of connections.", nil),
 		8:  newServerMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 		9:  newServerMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
