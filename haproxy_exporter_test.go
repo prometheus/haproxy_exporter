@@ -180,7 +180,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	// add it to client_golang first. (See also readCounter() above.)
 
 	// Suck up the remaining metrics.
-	for _ = range ch {
+	for range ch {
 	}
 }
 
@@ -468,7 +468,7 @@ func TestFilterServerMetrics(t *testing.T) {
 			continue
 		}
 		if !reflect.DeepEqual(tt.want, have) {
-			t.Errorf("want filtered metrics %s for input %s, have %s",
+			t.Errorf("want filtered metrics %+v for input %q, have %+v",
 				tt.want,
 				tt.input,
 				have,
@@ -496,7 +496,7 @@ func BenchmarkExtract(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ch := make(chan prometheus.Metric)
 		go func(ch chan prometheus.Metric) {
-			for _ = range ch {
+			for range ch {
 			}
 		}(ch)
 

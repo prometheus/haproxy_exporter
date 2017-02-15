@@ -358,7 +358,7 @@ func (e *Exporter) parseRow(csvRow []string) {
 		return
 	}
 
-	pxname, svname, type_ := csvRow[0], csvRow[1], csvRow[32]
+	pxname, svname, typ := csvRow[0], csvRow[1], csvRow[32]
 
 	const (
 		frontend = "0"
@@ -367,7 +367,7 @@ func (e *Exporter) parseRow(csvRow []string) {
 		listener = "3"
 	)
 
-	switch type_ {
+	switch typ {
 	case frontend:
 		e.exportCsvFields(e.frontendMetrics, csvRow, pxname)
 	case backend:
@@ -441,7 +441,7 @@ func main() {
 		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
 		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-seperated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
+		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
 		showVersion               = flag.Bool("version", false, "Print version information.")
