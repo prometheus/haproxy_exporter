@@ -437,13 +437,22 @@ func filterServerMetrics(filter string) (map[int]*prometheus.GaugeVec, error) {
 }
 
 func main() {
+	const pidFileHelpText = `Path to HAProxy pid file.
+
+	If provided, the standard process metrics get exported for the HAProxy
+	process, prefixed with 'haproxy_process_...'. The haproxy_process exporter
+	needs to have read access to files owned by the HAProxy process. Depends on
+	the availability of /proc.
+
+	https://prometheus.io/docs/instrumenting/writing_clientlibs/#process-metrics.`
+
 	var (
 		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
 		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
 		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
-		haProxyPidFile            = flag.String("haproxy.pid-file", "", "Path to haproxy's pid file.")
+		haProxyPidFile            = flag.String("haproxy.pid-file", "", pidFileHelpText)
 		showVersion               = flag.Bool("version", false, "Print version information.")
 	)
 	flag.Parse()
