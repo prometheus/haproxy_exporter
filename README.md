@@ -27,7 +27,8 @@ core developers are accessible via the Prometheus Developers [mailinglist][].
 
 ### HTTP stats URL
 
-Specify custom URLs for the HAProxy stats port using the `-haproxy.scrape-uri` flag. For example, if you have set `stats uri /baz`,
+Specify custom URLs for the HAProxy stats port using the `-haproxy.scrape-uri`
+flag. For example, if you have set `stats uri /baz`,
 
 ```bash
 haproxy_exporter -haproxy.scrape-uri="http://localhost:5000/baz?stats;csv"
@@ -41,11 +42,14 @@ haproxy_exporter -haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;c
 
 Note that the `;csv` is mandatory (and needs to be quoted).
 
-If your stats port is protected by [basic auth](https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth), add the credentials to the scrape URL:
+If your stats port is protected by [basic auth][], add the credentials to the
+scrape URL:
 
 ```bash
 haproxy_exporter  -haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
+
+[basic auth]: https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth
 
 ### Unix Sockets
 
