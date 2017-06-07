@@ -1,4 +1,4 @@
-package main
+package collector
 
 import (
 	"bufio"
@@ -13,9 +13,8 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
-
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 const testSocket = "/tmp/haproxyexportertest.sock"
@@ -61,7 +60,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -90,7 +89,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -133,7 +132,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -171,7 +170,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -201,7 +200,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -228,7 +227,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, true, ServerMetrics.String(), nil, 1*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +259,7 @@ func TestNotFound(t *testing.T) {
 	s := httptest.NewServer(http.NotFoundHandler())
 	defer s.Close()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, true, ServerMetrics.String(), nil, 1*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +324,7 @@ func TestUnixDomain(t *testing.T) {
 	}
 	defer srv.Close()
 
-	e, err := NewExporter("unix:"+testSocket, true, serverMetrics, 5*time.Second)
+	e, err := NewExporter("unix:"+testSocket, true, ServerMetrics.String(), nil, 5*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +366,7 @@ func TestUnixDomainNotFound(t *testing.T) {
 	if err := os.Remove(testSocket); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
+	e, _ := NewExporter("unix:"+testSocket, true, ServerMetrics.String(), nil, 1*time.Second)
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -420,7 +419,7 @@ func TestUnixDomainDeadline(t *testing.T) {
 		}
 	}()
 
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
+	e, _ := NewExporter("unix:"+testSocket, true, ServerMetrics.String(), nil, 1*time.Second)
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -445,7 +444,7 @@ func TestUnixDomainDeadline(t *testing.T) {
 }
 
 func TestInvalidScheme(t *testing.T) {
-	e, err := NewExporter("gopher://gopher.quux.org", true, serverMetrics, 1*time.Second)
+	e, err := NewExporter("gopher://gopher.quux.org", true, ServerMetrics.String(), nil, 1*time.Second)
 	if expect, got := (*Exporter)(nil), e; expect != got {
 		t.Errorf("expected %v, got %v", expect, got)
 	}
@@ -488,15 +487,16 @@ func TestParseStatusField(t *testing.T) {
 func TestFilterServerMetrics(t *testing.T) {
 	tests := []struct {
 		input string
-		want  map[int]*prometheus.GaugeVec
+		want  map[int]prometheus.GaugeOpts
 	}{
-		{input: "", want: map[int]*prometheus.GaugeVec{}},
-		{input: "8", want: map[int]*prometheus.GaugeVec{8: serverMetrics[8]}},
-		{input: serverMetrics.String(), want: serverMetrics},
+		{input: "", want: map[int]prometheus.GaugeOpts{}},
+		{input: "8", want: map[int]prometheus.GaugeOpts{8: ServerMetrics[8]}},
+		{input: ServerMetrics.String(), want: ServerMetrics},
 	}
 
 	for _, tt := range tests {
-		have, err := filterServerMetrics(tt.input)
+		e, _ := NewExporter("", true, ServerMetrics.String(), nil, 5*time.Second)
+		have, err := e.filterServerMetrics(tt.input)
 		if err != nil {
 			t.Errorf("unexpected error for input %s: %s", tt.input, err)
 			continue
@@ -520,7 +520,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, ServerMetrics.String(), nil, 5*time.Second)
 
 	var before, after runtime.MemStats
 	runtime.GC()
