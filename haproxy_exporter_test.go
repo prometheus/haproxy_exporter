@@ -125,10 +125,10 @@ func TestServerWithoutChecks(t *testing.T) {
 //   * http://permalink.gmane.org/gmane.comp.web.haproxy/26561
 //
 func TestServerBrokenCSV(t *testing.T) {
-	const data = `foo,FRONTEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
-foo,bug-missing-comma,0,0,0,0,,0,0,0,,0,,0,0,0,0,DRAIN (agent)1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
-foo,foo-instance-0,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
-foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,
+	const data = `foo,FRONTEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
+foo,bug-missing-comma,0,0,0,0,,0,0,0,,0,,0,0,0,0,DRAIN (agent)1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
+foo,foo-instance-0,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
+foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
 `
 	h := newHaproxy([]byte(data))
 	defer h.Close()
@@ -285,7 +285,7 @@ func TestUnixDomain(t *testing.T) {
 		t.Skip("not on windows")
 		return
 	}
-	srv, err := newHaproxyUnix(testSocket, "test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,\n")
+	srv, err := newHaproxyUnix(testSocket, "test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,\n")
 	if err != nil {
 		t.Fatalf("can't start test server: %v", err)
 	}
