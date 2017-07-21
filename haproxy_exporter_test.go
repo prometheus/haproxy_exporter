@@ -163,6 +163,40 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	}
 }
 
+func TestOlderHaproxyVersions(t *testing.T) {
+	const data = `foo,FRONTEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
+foo,foo-instance-0,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
+foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
+`
+	h := newHaproxy([]byte(data))
+	defer h.Close()
+
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
+		// up
+		t.Errorf("expected %f up, got %f", expect, got)
+	}
+	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// totalScrapes
+		t.Errorf("expected %f recorded scrape, got %f", expect, got)
+	}
+	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
+		// csvParseFailures
+		t.Errorf("expected %f csv parse failures, got %f", expect, got)
+	}
+
+	// Suck up the remaining metrics.
+	for range ch {
+	}
+}
+
 func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
