@@ -317,7 +317,7 @@ func TestUnixDomain(t *testing.T) {
 
 	got := 0
 	for range ch {
-		got += 1
+		got++
 	}
 	if expect := len(e.serverMetrics) - 1; got != expect {
 		t.Errorf("expected %d metrics, got %d", expect, got)
