@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/csv"
 	"errors"
 	"flag"
@@ -124,9 +125,10 @@ var (
 // Exporter collects HAProxy stats from the given URI and exports them using
 // the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
-	fetch func() (io.ReadCloser, error)
+	URI      string
+	insecure bool
+	mutex    sync.RWMutex
+	fetch    func() (io.ReadCloser, error)
 
 	up                                             prometheus.Gauge
 	totalScrapes, csvParseFailures                 prometheus.Counter
@@ -134,7 +136,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) (*Exporter, error) {
+func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration, insecure bool) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -143,7 +145,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 	var fetch func() (io.ReadCloser, error)
 	switch u.Scheme {
 	case "http", "https", "file":
-		fetch = fetchHTTP(uri, timeout)
+		fetch = fetchHTTP(uri, timeout, insecure)
 	case "unix":
 		fetch = fetchUnix(u, timeout)
 	default:
@@ -248,9 +250,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectMetrics(ch)
 }
 
-func fetchHTTP(uri string, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchHTTP(uri string, timeout time.Duration, insecure bool) func() (io.ReadCloser, error) {
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+	}
+
 	client := http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: tr,
 	}
 
 	return func() (io.ReadCloser, error) {
@@ -454,6 +462,7 @@ func main() {
 		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
 		haProxyPidFile            = flag.String("haproxy.pid-file", "", pidFileHelpText)
 		showVersion               = flag.Bool("version", false, "Print version information.")
+		insecure                  = flag.Bool("insecure", false, "Allow connections to SSL sites without certs.")
 	)
 	flag.Parse()
 
@@ -470,7 +479,7 @@ func main() {
 	log.Infoln("Starting haproxy_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	exporter, err := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
+	exporter, err := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout, *insecure)
 	if err != nil {
 		log.Fatal(err)
 	}
