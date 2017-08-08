@@ -125,10 +125,9 @@ var (
 // Exporter collects HAProxy stats from the given URI and exports them using
 // the prometheus metrics package.
 type Exporter struct {
-	URI      string
-	insecure bool
-	mutex    sync.RWMutex
-	fetch    func() (io.ReadCloser, error)
+	URI   string
+	mutex sync.RWMutex
+	fetch func() (io.ReadCloser, error)
 
 	up                                             prometheus.Gauge
 	totalScrapes, csvParseFailures                 prometheus.Counter
