@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +10,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
@@ -447,20 +446,18 @@ func main() {
 	https://prometheus.io/docs/instrumenting/writing_clientlibs/#process-metrics.`
 
 	var (
-		listenAddress             = flag.String("web.listen-address", ":9101", "Address to listen on for web interface and telemetry.")
-		metricsPath               = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		haProxyScrapeURI          = flag.String("haproxy.scrape-uri", "http://localhost/;csv", "URI on which to scrape HAProxy.")
-		haProxyServerMetricFields = flag.String("haproxy.server-metric-fields", serverMetrics.String(), "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1")
-		haProxyTimeout            = flag.Duration("haproxy.timeout", 5*time.Second, "Timeout for trying to get stats from HAProxy.")
-		haProxyPidFile            = flag.String("haproxy.pid-file", "", pidFileHelpText)
-		showVersion               = flag.Bool("version", false, "Print version information.")
+		listenAddress             = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
+		metricsPath               = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		haProxyScrapeURI          = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
+		haProxyServerMetricFields = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
+		haProxyTimeout            = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
+		haProxyPidFile            = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
 	)
-	flag.Parse()
 
-	if *showVersion {
-		fmt.Fprintln(os.Stdout, version.Print("haproxy_exporter"))
-		os.Exit(0)
-	}
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Version(version.Print("haproxy_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
 
 	selectedServerMetrics, err := filterServerMetrics(*haProxyServerMetricFields)
 	if err != nil {
