@@ -27,17 +27,17 @@ core developers are accessible via the Prometheus Developers [mailinglist][].
 
 ### HTTP stats URL
 
-Specify custom URLs for the HAProxy stats port using the `-haproxy.scrape-uri`
+Specify custom URLs for the HAProxy stats port using the `--haproxy.scrape-uri`
 flag. For example, if you have set `stats uri /baz`,
 
 ```bash
-haproxy_exporter -haproxy.scrape-uri="http://localhost:5000/baz?stats;csv"
+haproxy_exporter --haproxy.scrape-uri="http://localhost:5000/baz?stats;csv"
 ```
 
 Or to scrape a remote host:
 
 ```bash
-haproxy_exporter -haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;csv"
+haproxy_exporter --haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;csv"
 ```
 
 Note that the `;csv` is mandatory (and needs to be quoted).
@@ -46,7 +46,7 @@ If your stats port is protected by [basic auth][], add the credentials to the
 scrape URL:
 
 ```bash
-haproxy_exporter  -haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
+haproxy_exporter  --haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
 
 [basic auth]: https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth
@@ -63,7 +63,7 @@ socket in HAProxy with for example:
 The scrape URL uses the 'unix:' scheme:
 
 ```bash
-haproxy_exporter -haproxy.scrape-uri=unix:/run/haproxy/admin.sock
+haproxy_exporter --haproxy.scrape-uri=unix:/run/haproxy/admin.sock
 ```
 
 ### Docker
@@ -74,7 +74,7 @@ haproxy_exporter -haproxy.scrape-uri=unix:/run/haproxy/admin.sock
 To run the haproxy exporter as a Docker container, run:
 
 ```bash
-docker run -p 9101:9101 quay.io/prometheus/haproxy-exporter -haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
+docker run -p 9101:9101 quay.io/prometheus/haproxy-exporter --haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
 
 [hub]: https://hub.docker.com/r/prom/haproxy-exporter/
