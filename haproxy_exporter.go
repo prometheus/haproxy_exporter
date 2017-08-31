@@ -33,6 +33,12 @@ const (
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,
 	minimumCsvFieldCount = 33
 	statusField          = 17
+
+	// CSV status field 32 enum values.
+	frontend = "0"
+	backend  = "1"
+	server   = "2"
+	listener = "3"
 )
 
 var (
@@ -365,13 +371,6 @@ func (e *Exporter) parseRow(csvRow []string) {
 
 	pxname, svname, typ := csvRow[0], csvRow[1], csvRow[32]
 
-	const (
-		frontend = "0"
-		backend  = "1"
-		server   = "2"
-		listener = "3"
-	)
-
 	switch typ {
 	case frontend:
 		e.exportCsvFields(e.frontendMetrics, csvRow, pxname)
@@ -382,7 +381,7 @@ func (e *Exporter) parseRow(csvRow []string) {
 	}
 }
 
-func parseStatusField(value string) int64 {
+func parseStatusField(value string) float64 {
 	switch value {
 	case "UP", "UP 1/3", "UP 2/3", "OPEN", "no check":
 		return 1
@@ -402,20 +401,29 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 			continue
 		}
 
-		var value int64
+		var value float64
 		switch fieldIdx {
 		case statusField:
 			value = parseStatusField(valueStr)
 		default:
 			var err error
-			value, err = strconv.ParseInt(valueStr, 10, 64)
+			value, err = strconv.ParseFloat(valueStr, 64)
 			if err != nil {
 				log.Errorf("Can't parse CSV field value %s: %v", valueStr, err)
 				e.csvParseFailures.Inc()
 				continue
 			}
 		}
-		metric.WithLabelValues(labels...).Set(float64(value))
+		// Handle value translations.
+		switch csvRow[32] {
+		case backend:
+			switch fieldIdx {
+			// These backend values are in milliseconds, translate to seconds.
+			case 58, 59, 60, 61:
+				value = value / 1000
+			}
+		}
+		metric.WithLabelValues(labels...).Set(value)
 	}
 }
 

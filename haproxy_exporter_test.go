@@ -460,7 +460,7 @@ func TestInvalidScheme(t *testing.T) {
 func TestParseStatusField(t *testing.T) {
 	tests := []struct {
 		input string
-		want  int64
+		want  float64
 	}{
 		{"UP", 1},
 		{"UP 1/3", 1},
