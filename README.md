@@ -49,6 +49,13 @@ scrape URL:
 haproxy_exporter  --haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
 
+You can also scrape HTTPS URLs. Certificate validation is enabled by default, but
+you can disable it using the `--haproxy.ssl-verify=false` flag:
+
+```bash
+haproxy_exporter --haproxy.ssl-verify=false --haproxy.scrape-uri="https://haproxy.example.com/haproxy?stats;csv"
+```
+
 [basic auth]: https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth
 
 ### Unix Sockets

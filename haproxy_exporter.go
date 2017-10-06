@@ -255,13 +255,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func fetchHTTP(uri string, sslVerify bool, timeout time.Duration) func() (io.ReadCloser, error) {
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: !sslVerify}}
 	client := http.Client{
-		Timeout: timeout,
-	}
-
-	if !sslVerify {
-		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-		client.Transport = tr
+		Timeout:   timeout,
+		Transport: tr,
 	}
 
 	return func() (io.ReadCloser, error) {
