@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -135,7 +136,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) (*Exporter, error) {
+func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prometheus.GaugeVec, timeout time.Duration) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -144,7 +145,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 	var fetch func() (io.ReadCloser, error)
 	switch u.Scheme {
 	case "http", "https", "file":
-		fetch = fetchHTTP(uri, timeout)
+		fetch = fetchHTTP(uri, sslVerify, timeout)
 	case "unix":
 		fetch = fetchUnix(u, timeout)
 	default:
@@ -253,9 +254,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectMetrics(ch)
 }
 
-func fetchHTTP(uri string, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchHTTP(uri string, sslVerify bool, timeout time.Duration) func() (io.ReadCloser, error) {
 	client := http.Client{
 		Timeout: timeout,
+	}
+
+	if !sslVerify {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		client.Transport = tr
 	}
 
 	return func() (io.ReadCloser, error) {
@@ -458,6 +464,7 @@ func main() {
 		listenAddress             = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
 		metricsPath               = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		haProxyScrapeURI          = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
+		haProxySSLVerify          = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").Bool()
 		haProxyServerMetricFields = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
 		haProxyTimeout            = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
 		haProxyPidFile            = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
@@ -476,7 +483,7 @@ func main() {
 	log.Infoln("Starting haproxy_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	exporter, err := NewExporter(*haProxyScrapeURI, selectedServerMetrics, *haProxyTimeout)
+	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, selectedServerMetrics, *haProxyTimeout)
 	if err != nil {
 		log.Fatal(err)
 	}
