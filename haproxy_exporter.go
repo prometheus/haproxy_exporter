@@ -31,6 +31,8 @@ const (
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,
 	// HAProxy 1.5.19
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,
+	// HAProxy 1.7
+	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,agent_status,agent_code,agent_duration,check_desc,agent_desc,check_rise,check_fall,check_health,agent_rise,agent_fall,agent_health,addr,cookie,mode,algo,conn_rate,conn_rate_max,conn_tot,intercepted,dcon,dses
 	minimumCsvFieldCount = 33
 	statusField          = 17
 )
@@ -99,7 +101,7 @@ var (
 		4:  newServerMetric("current_sessions", "Current number of active sessions.", nil),
 		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 		6:  newServerMetric("limit_sessions", "Configured session limit.", nil),
-		7:  newServerMetric("connections_total", "Total number of connections.", nil),
+		7:  newServerMetric("sessions_total", "Total number of sessions.", nil),
 		8:  newServerMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 		9:  newServerMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
 		13: newServerMetric("connection_errors_total", "Total of connection errors.", nil),
@@ -173,7 +175,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			4:  newFrontendMetric("current_sessions", "Current number of active sessions.", nil),
 			5:  newFrontendMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 			6:  newFrontendMetric("limit_sessions", "Configured session limit.", nil),
-			7:  newFrontendMetric("connections_total", "Total number of connections.", nil),
+			7:  newFrontendMetric("sessions_total", "Total number of sessions.", nil),
 			8:  newFrontendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 			9:  newFrontendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
 			10: newFrontendMetric("requests_denied_total", "Total of requests denied for security.", nil),
@@ -188,6 +190,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			43: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 			44: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
 			48: newFrontendMetric("http_requests_total", "Total HTTP requests.", nil),
+			79: newFrontendMetric("connections_total", "Total number of connections", nil),
 		},
 		backendMetrics: map[int]*prometheus.GaugeVec{
 			2:  newBackendMetric("current_queue", "Current number of queued requests not assigned to any server.", nil),
@@ -195,7 +198,7 @@ func NewExporter(uri string, selectedServerMetrics map[int]*prometheus.GaugeVec,
 			4:  newBackendMetric("current_sessions", "Current number of active sessions.", nil),
 			5:  newBackendMetric("max_sessions", "Maximum observed number of active sessions.", nil),
 			6:  newBackendMetric("limit_sessions", "Configured session limit.", nil),
-			7:  newBackendMetric("connections_total", "Total number of connections.", nil),
+			7:  newBackendMetric("sessions_total", "Total number of sessions.", nil),
 			8:  newBackendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
 			9:  newBackendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
 			13: newBackendMetric("connection_errors_total", "Total of connection errors.", nil),
