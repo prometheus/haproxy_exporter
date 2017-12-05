@@ -57,6 +57,13 @@ func readGauge(m prometheus.Gauge) float64 {
 	return pb.GetGauge().GetValue()
 }
 
+func readMetric(m prometheus.Metric) float64 {
+	// TODO: Revisit this once client_golang offers better testing tools.
+	pb := &dto.Metric{}
+	m.Write(pb)
+	return pb.GetGauge().GetValue()
+}
+
 func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
@@ -117,6 +124,34 @@ func TestServerWithoutChecks(t *testing.T) {
 	}
 	if expect := len(e.serverMetrics) - 1; got != expect {
 		t.Errorf("expected %d metrics, got %d", expect, got)
+	}
+}
+
+func TestValueTranslations(t *testing.T) {
+	h := newHaproxy([]byte("web,BACKEND,0,0,5,227,2000,672445,169492761,21433926078,0,0,,411193,1,0,0,UP,2,2,0,,74,25058,306386,,1,11,0,,261249,,1,1,,29,,,,0,224137,30226,962,417058,57,,,,,197819,0,0,0,0,0,1,,,0,1,3090,3263,\n"))
+	defer h.Close()
+
+	e, _ := NewExporter(h.URL, serverMetrics, 5*time.Second)
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		defer close(ch)
+		e.Collect(ch)
+	}()
+
+	metricNum := 0
+	for v := range ch {
+		switch metricNum {
+		case 3:
+			if expect, got := 3.263, readMetric(v); expect != got {
+				t.Errorf("expected value %f, got %f", expect, got)
+			}
+		case 19:
+			if expect, got := 3.09, readMetric(v); expect != got {
+				t.Errorf("expected value %f, got %f", expect, got)
+			}
+		}
+		metricNum++
 	}
 }
 
@@ -460,7 +495,7 @@ func TestInvalidScheme(t *testing.T) {
 func TestParseStatusField(t *testing.T) {
 	tests := []struct {
 		input string
-		want  int64
+		want  float64
 	}{
 		{"UP", 1},
 		{"UP 1/3", 1},
