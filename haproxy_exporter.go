@@ -35,6 +35,10 @@ const (
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,agent_status,agent_code,agent_duration,check_desc,agent_desc,check_rise,check_fall,check_health,agent_rise,agent_fall,agent_health,addr,cookie,mode,algo,conn_rate,conn_rate_max,conn_tot,intercepted,dcon,dses
 	minimumCsvFieldCount = 33
 	statusField          = 17
+	qtimeMsField         = 58
+	ctimeMsField         = 59
+	rtimeMsField         = 60
+	ttimeMsField         = 61
 )
 
 var (
@@ -405,20 +409,27 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 			continue
 		}
 
-		var value int64
+		var err error = nil
+		var value float64
+		var valueInt int64
+
 		switch fieldIdx {
 		case statusField:
-			value = parseStatusField(valueStr)
+			valueInt = parseStatusField(valueStr)
+			value = float64(valueInt)
+	        case qtimeMsField, ctimeMsField, rtimeMsField, ttimeMsField:
+			value, err = strconv.ParseFloat(valueStr, 64)
+			value /= 1000
 		default:
-			var err error
-			value, err = strconv.ParseInt(valueStr, 10, 64)
-			if err != nil {
-				log.Errorf("Can't parse CSV field value %s: %v", valueStr, err)
-				e.csvParseFailures.Inc()
-				continue
-			}
+			valueInt, err = strconv.ParseInt(valueStr, 10, 64)
+			value = float64(valueInt)
 		}
-		metric.WithLabelValues(labels...).Set(float64(value))
+		if err != nil {
+			log.Errorf("Can't parse CSV field value %s: %v", valueStr, err)
+			e.csvParseFailures.Inc()
+			continue
+		}
+		metric.WithLabelValues(labels...).Set(value)
 	}
 }
 
