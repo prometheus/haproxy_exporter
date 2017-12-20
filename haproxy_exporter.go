@@ -212,6 +212,7 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prom
 			16: newBackendMetric("redispatch_warnings_total", "Total of redispatch warnings.", nil),
 			17: newBackendMetric("up", "Current health status of the backend (1 = UP, 0 = DOWN).", nil),
 			18: newBackendMetric("weight", "Total weight of the servers in the backend.", nil),
+			19: newBackendMetric("current_server", "Current number of active servers", nil),
 			33: newBackendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
 			35: newBackendMetric("max_session_rate", "Maximum number of sessions per second.", nil),
 			39: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
