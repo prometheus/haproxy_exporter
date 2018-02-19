@@ -457,20 +457,54 @@ func TestInvalidScheme(t *testing.T) {
 	}
 }
 
+func TestNormaliseStatusField(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"UP", "UP"},
+		{"UP 1/3", "UP"},
+		{"UP 2/3", "UP"},
+		{"OPEN", "OPEN"},
+		{"no check", "no check"},
+		{"DOWN", "DOWN"},
+		{"DOWN 1/2", "DOWN"},
+		{"DOWN (agent)", "DOWN"},
+		{"NOLB", "NOLB"},
+		{"NOLB 1/2", "NOLB"},
+		{"DRAIN", "DRAIN"},
+		{"DRAIN 1/2", "DRAIN"},
+		{"DRAIN (agent)", "DRAIN"},
+		{"MAINT", "MAINT"},
+		{"MAINT (via foo/bar)", "MAINT"},
+		{"MAINT (resolution)", "MAINT"},
+		{"unknown", "unknown"},
+		{" ", " "},
+	}
+
+	for _, tt := range tests {
+		if have := normaliseStatusField(tt.input); tt.want != have {
+			t.Errorf("want status value %s for input %s, have %s",
+				tt.want,
+				tt.input,
+				have,
+			)
+		}
+	}
+}
+
 func TestParseStatusField(t *testing.T) {
 	tests := []struct {
 		input string
 		want  int64
 	}{
 		{"UP", 1},
-		{"UP 1/3", 1},
-		{"UP 2/3", 1},
 		{"OPEN", 1},
 		{"no check", 1},
 		{"DOWN", 0},
-		{"DOWN 1/2", 0},
 		{"NOLB", 0},
 		{"MAINT", 0}, // prometheus/haproxy_exporter#35
+		{"DRAIN", 0},
 		{"unknown", 0},
 	}
 
