@@ -35,17 +35,18 @@ test:
     - docker run --rm -t -v "$(pwd):/app" "${DOCKER_TEST_IMAGE_NAME}" -i "${REPO_PATH}" -T
 
 deployment:
-  hub_branch:
+  docker_branch:
     branch: master
-    owner: prometheus
     commands:
       - docker login -e $DOCKER_EMAIL -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-      - docker login -e $QUAY_EMAIL -u $QUAY_LOGIN -p $QUAY_PASSWORD quay.io
       - docker push $DOCKER_IMAGE_NAME
+  qay_branch:
+    branch: master
+    commands:
+      - docker login -e $QUAY_EMAIL -u $QUAY_LOGIN -p $QUAY_PASSWORD quay.io
       - docker push $QUAY_IMAGE_NAME
   hub_tag:
     tag: /^v[0-9]+(\.[0-9]+){2}(-.+|[^-.]*)$/
-    owner: prometheus
     commands:
       - promu crossbuild tarballs
       - promu checksum .tarballs
