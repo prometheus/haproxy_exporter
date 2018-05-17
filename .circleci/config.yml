@@ -12,7 +12,7 @@ jobs:
     - setup_remote_docker
     - run: make promu
     - run: make
-    - run: rm -v haproxy-exporter
+    - run: rm -f haproxy-exporter
 
   build:
     machine: true

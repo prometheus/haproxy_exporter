@@ -20,7 +20,7 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_NAME       ?= haproxy-exporter
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
-all: format build test
+all: style build test
 
 test:
 	@echo ">> running tests"
