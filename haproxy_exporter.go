@@ -421,7 +421,7 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.GaugeVec, csvRow 
 		case statusField:
 			valueInt = parseStatusField(valueStr)
 			value = float64(valueInt)
-	        case qtimeMsField, ctimeMsField, rtimeMsField, ttimeMsField:
+		case qtimeMsField, ctimeMsField, rtimeMsField, ttimeMsField:
 			value, err = strconv.ParseFloat(valueStr, 64)
 			value /= 1000
 		default:
