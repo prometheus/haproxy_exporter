@@ -2,4 +2,4 @@ language: go
 go: 1.9
 
 script:
- - make test
+ - make check_license style unused test staticcheck
