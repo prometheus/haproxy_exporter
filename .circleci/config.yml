@@ -12,7 +12,7 @@ jobs:
     - setup_remote_docker
     - run: make promu
     - run: make
-    - run: rm -f haproxy-exporter
+    - run: rm -f haproxy_exporter
 
   build:
     machine: true
@@ -41,7 +41,7 @@ jobs:
     - setup_remote_docker
     - attach_workspace:
         at: .
-    - run: ln -s .build/linux-amd64/haproxy-exporter haproxy-exporter
+    - run: ln -s .build/linux-amd64/haproxy_exporter haproxy_exporter
     - run: make docker DOCKER_IMAGE_NAME=$DOCKER_IMAGE_NAME
     - run: make docker DOCKER_IMAGE_NAME=$QUAY_IMAGE_NAME
     - run: docker images
@@ -72,7 +72,7 @@ jobs:
     - store_artifacts:
         path: .tarballs
         destination: releases
-    - run: ln -s .build/linux-amd64/haproxy-exporter haproxy-exporter
+    - run: ln -s .build/linux-amd64/haproxy_exporter haproxy_exporter
     - run: make docker DOCKER_IMAGE_NAME=$DOCKER_IMAGE_NAME DOCKER_IMAGE_TAG=$CIRCLE_TAG
     - run: make docker DOCKER_IMAGE_NAME=$QUAY_IMAGE_NAME DOCKER_IMAGE_TAG=$CIRCLE_TAG
     - run: docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
