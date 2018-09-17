@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -516,8 +517,8 @@ func main() {
 	prometheus.MustRegister(version.NewCollector("haproxy_exporter"))
 
 	if *haProxyPidFile != "" {
-		procExporter := prometheus.NewProcessCollectorPIDFn(
-			func() (int, error) {
+		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
+			PidFn: func() (int, error) {
 				content, err := ioutil.ReadFile(*haProxyPidFile)
 				if err != nil {
 					return 0, fmt.Errorf("Can't read pid file: %s", err)
@@ -527,12 +528,14 @@ func main() {
 					return 0, fmt.Errorf("Can't parse pid file: %s", err)
 				}
 				return value, nil
-			}, namespace)
+			},
+			Namespace: namespace,
+		})
 		prometheus.MustRegister(procExporter)
 	}
 
 	log.Infoln("Listening on", *listenAddress)
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Haproxy Exporter</title></head>
