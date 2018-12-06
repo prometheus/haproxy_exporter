@@ -1,0 +1,9 @@
+# HELP haproxy_exporter_csv_parse_failures Number of errors while parsing CSV.
+# TYPE haproxy_exporter_csv_parse_failures counter
+haproxy_exporter_csv_parse_failures 1
+# HELP haproxy_exporter_total_scrapes Current total HAProxy scrapes.
+# TYPE haproxy_exporter_total_scrapes counter
+haproxy_exporter_total_scrapes 1
+# HELP haproxy_up Was the last scrape of haproxy successful.
+# TYPE haproxy_up gauge
+haproxy_up 1
