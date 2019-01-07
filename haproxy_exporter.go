@@ -394,7 +394,6 @@ func (e *Exporter) parseRow(csvRow []string) {
 		frontend = "0"
 		backend  = "1"
 		server   = "2"
-		listener = "3"
 	)
 
 	switch typ {
@@ -521,11 +520,11 @@ func main() {
 			PidFn: func() (int, error) {
 				content, err := ioutil.ReadFile(*haProxyPidFile)
 				if err != nil {
-					return 0, fmt.Errorf("Can't read pid file: %s", err)
+					return 0, fmt.Errorf("can't read pid file: %s", err)
 				}
 				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
 				if err != nil {
-					return 0, fmt.Errorf("Can't parse pid file: %s", err)
+					return 0, fmt.Errorf("can't parse pid file: %s", err)
 				}
 				return value, nil
 			},
