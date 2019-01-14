@@ -21,14 +21,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 const testSocket = "/tmp/haproxyexportertest.sock"
@@ -56,18 +56,14 @@ func handlerStale(exit chan bool) http.HandlerFunc {
 	}
 }
 
-func readCounter(m prometheus.Counter) float64 {
-	// TODO: Revisit this once client_golang offers better testing tools.
-	pb := &dto.Metric{}
-	m.Write(pb)
-	return pb.GetCounter().GetValue()
-}
-
-func readGauge(m prometheus.Gauge) float64 {
-	// TODO: Revisit this once client_golang offers better testing tools.
-	pb := &dto.Metric{}
-	m.Write(pb)
-	return pb.GetGauge().GetValue()
+func expectMetrics(t *testing.T, c prometheus.Collector, fixture string) {
+	exp, err := os.Open(path.Join("test", fixture))
+	if err != nil {
+		t.Fatalf("Error opening fixture file %q: %v", fixture, err)
+	}
+	if err := testutil.CollectAndCompare(c, exp); err != nil {
+		t.Fatal("Unexpected metrics returned:", err)
+	}
 }
 
 func TestInvalidConfig(t *testing.T) {
@@ -75,28 +71,8 @@ func TestInvalidConfig(t *testing.T) {
 	defer h.Close()
 
 	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
-	ch := make(chan prometheus.Metric)
 
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-	if <-ch != nil {
-		t.Errorf("expected closed channel")
-	}
+	expectMetrics(t, e, "invalid_config.metrics")
 }
 
 func TestServerWithoutChecks(t *testing.T) {
@@ -104,33 +80,8 @@ func TestServerWithoutChecks(t *testing.T) {
 	defer h.Close()
 
 	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
-	ch := make(chan prometheus.Metric)
 
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-
-	got := 0
-	for range ch {
-		got++
-	}
-	if expect := len(e.serverMetrics) - 1; got != expect {
-		t.Errorf("expected %d metrics, got %d", expect, got)
-	}
+	expectMetrics(t, e, "server_without_checks.metrics")
 }
 
 // TestServerBrokenCSV ensures bugs in CSV format are handled gracefully. List of known bugs:
@@ -147,33 +98,8 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	defer h.Close()
 
 	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
-	ch := make(chan prometheus.Metric)
 
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-
-	got := 0
-	for range ch {
-		got++
-	}
-	if expect := len(e.frontendMetrics) + len(e.backendMetrics); got < expect {
-		t.Errorf("expected at least %d metrics, got %d", expect, got)
-	}
+	expectMetrics(t, e, "server_broken_csv.metrics")
 }
 
 func TestOlderHaproxyVersions(t *testing.T) {
@@ -185,29 +111,8 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
 	defer h.Close()
 
 	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
-	ch := make(chan prometheus.Metric)
 
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-
-	// Suck up the remaining metrics.
-	for range ch {
-	}
+	expectMetrics(t, e, "older_haproxy_versions.metrics")
 }
 
 func TestConfigChangeDetection(t *testing.T) {
@@ -246,27 +151,7 @@ func TestDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-	if <-ch != nil {
-		t.Errorf("expected closed channel")
-	}
+	expectMetrics(t, e, "deadline.metrics")
 }
 
 func TestNotFound(t *testing.T) {
@@ -278,16 +163,7 @@ func TestNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
+	expectMetrics(t, e, "not_found.metrics")
 }
 
 func newHaproxyUnix(file, statsPayload string) (io.Closer, error) {
@@ -342,33 +218,8 @@ func TestUnixDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ch := make(chan prometheus.Metric)
 
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 1., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-
-	got := 0
-	for range ch {
-		got += 1
-	}
-	if expect := len(e.serverMetrics) - 1; got != expect {
-		t.Errorf("expected %d metrics, got %d", expect, got)
-	}
+	expectMetrics(t, e, "unix_domain.metrics")
 }
 
 func TestUnixDomainNotFound(t *testing.T) {
@@ -381,27 +232,7 @@ func TestUnixDomainNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
-
-	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-	if <-ch != nil {
-		t.Errorf("expected closed channel")
-	}
+	expectMetrics(t, e, "unix_domain_not_found.metrics")
 }
 
 func TestUnixDomainDeadline(t *testing.T) {
@@ -434,27 +265,8 @@ func TestUnixDomainDeadline(t *testing.T) {
 	}()
 
 	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		e.Collect(ch)
-	}()
 
-	if expect, got := 0., readGauge((<-ch).(prometheus.Gauge)); expect != got {
-		// up
-		t.Errorf("expected %f up, got %f", expect, got)
-	}
-	if expect, got := 1., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// totalScrapes
-		t.Errorf("expected %f recorded scrape, got %f", expect, got)
-	}
-	if expect, got := 0., readCounter((<-ch).(prometheus.Counter)); expect != got {
-		// csvParseFailures
-		t.Errorf("expected %f csv parse failures, got %f", expect, got)
-	}
-	if <-ch != nil {
-		t.Errorf("expected closed channel")
-	}
+	expectMetrics(t, e, "unix_domain_deadline.metrics")
 }
 
 func TestInvalidScheme(t *testing.T) {
@@ -501,10 +313,10 @@ func TestParseStatusField(t *testing.T) {
 func TestFilterServerMetrics(t *testing.T) {
 	tests := []struct {
 		input string
-		want  map[int]*prometheus.GaugeVec
+		want  map[int]*prometheus.Desc
 	}{
-		{input: "", want: map[int]*prometheus.GaugeVec{}},
-		{input: "8", want: map[int]*prometheus.GaugeVec{8: serverMetrics[8]}},
+		{input: "", want: map[int]*prometheus.Desc{}},
+		{input: "8", want: map[int]*prometheus.Desc{8: serverMetrics[8]}},
 		{input: serverMetrics.String(), want: serverMetrics},
 	}
 
