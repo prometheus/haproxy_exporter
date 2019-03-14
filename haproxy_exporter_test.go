@@ -70,7 +70,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 
 	expectMetrics(t, e, "invalid_config.metrics")
 }
@@ -79,7 +79,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 
 	expectMetrics(t, e, "server_without_checks.metrics")
 }
@@ -97,7 +97,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 
 	expectMetrics(t, e, "server_broken_csv.metrics")
 }
@@ -110,7 +110,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 
 	expectMetrics(t, e, "older_haproxy_versions.metrics")
 }
@@ -119,7 +119,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -146,7 +146,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, true, 1*time.Second, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestNotFound(t *testing.T) {
 	s := httptest.NewServer(http.NotFoundHandler())
 	defer s.Close()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second)
+	e, err := NewExporter(s.URL, true, 1*time.Second, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestUnixDomain(t *testing.T) {
 	}
 	defer srv.Close()
 
-	e, err := NewExporter("unix:"+testSocket, true, serverMetrics, 5*time.Second)
+	e, err := NewExporter("unix:"+testSocket, true, 5*time.Second, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestUnixDomainNotFound(t *testing.T) {
 	if err := os.Remove(testSocket); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
+	e, _ := NewExporter("unix:"+testSocket, true, 1*time.Second, nil)
 	expectMetrics(t, e, "unix_domain_not_found.metrics")
 }
 
@@ -264,13 +264,13 @@ func TestUnixDomainDeadline(t *testing.T) {
 		}
 	}()
 
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second)
+	e, _ := NewExporter("unix:"+testSocket, true, 1*time.Second, nil)
 
 	expectMetrics(t, e, "unix_domain_deadline.metrics")
 }
 
 func TestInvalidScheme(t *testing.T) {
-	e, err := NewExporter("gopher://gopher.quux.org", true, serverMetrics, 1*time.Second)
+	e, err := NewExporter("gopher://gopher.quux.org", true, 1*time.Second, nil)
 	if expect, got := (*Exporter)(nil), e; expect != got {
 		t.Errorf("expected %v, got %v", expect, got)
 	}
@@ -311,26 +311,36 @@ func TestParseStatusField(t *testing.T) {
 }
 
 func TestFilterServerMetrics(t *testing.T) {
+	config, err := ioutil.ReadFile("test/haproxy.csv")
+	if err != nil {
+		t.Fatalf("could not read config file: %v", err.Error())
+	}
+
+	h := newHaproxy(config)
+	defer h.Close()
+
+	exporter, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 	tests := []struct {
 		input string
 		want  map[int]*prometheus.Desc
 	}{
 		{input: "", want: map[int]*prometheus.Desc{}},
-		{input: "8", want: map[int]*prometheus.Desc{8: serverMetrics[8]}},
-		{input: serverMetrics.String(), want: serverMetrics},
+		{input: "8", want: map[int]*prometheus.Desc{8: exporter.serverMetrics[8]}},
+		{input: serverMetricsString, want: exporter.serverMetrics},
 	}
-
 	for _, tt := range tests {
-		have, err := filterServerMetrics(tt.input)
+		e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
+
+		err := e.filterServerMetrics(tt.input)
 		if err != nil {
 			t.Errorf("unexpected error for input %s: %s", tt.input, err)
 			continue
 		}
-		if !reflect.DeepEqual(tt.want, have) {
+		if !reflect.DeepEqual(tt.want, e.serverMetrics) {
 			t.Errorf("want filtered metrics %+v for input %q, have %+v",
 				tt.want,
 				tt.input,
-				have,
+				e.serverMetrics,
 			)
 		}
 	}
@@ -345,7 +355,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second)
+	e, _ := NewExporter(h.URL, true, 5*time.Second, nil)
 
 	var before, after runtime.MemStats
 	runtime.GC()
