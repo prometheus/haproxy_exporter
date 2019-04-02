@@ -136,9 +136,14 @@ var (
 		42: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 		43: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 		44: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
+		46: newFrontendMetric("http_requests_current_rate", "Current HTTP requests rate.", nil),
+		47: newFrontendMetric("http_requests_max_rate", "Max HTTP requests rate.", nil),
 		48: newFrontendMetric("http_requests_total", "Total HTTP requests.", nil),
+		77: newFrontendMetric("connections_current_rate", "Current rate of connections.", nil),
+		78: newFrontendMetric("connections_max_rate", "Max rate of connections.", nil),
 		79: newFrontendMetric("connections_total", "Total number of connections", nil),
 	}
+
 	backendMetrics = metrics{
 		2:  newBackendMetric("current_queue", "Current number of queued requests not assigned to any server.", nil),
 		3:  newBackendMetric("max_queue", "Maximum observed number of queued requests not assigned to any server.", nil),
