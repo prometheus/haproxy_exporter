@@ -5,5 +5,5 @@ go:
 - 1.12.x
 
 script:
- - make check_license style unused test staticcheck
+ - make check_license style unused test lint
  - git diff --exit-code
