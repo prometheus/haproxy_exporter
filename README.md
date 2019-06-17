@@ -3,6 +3,8 @@
 This is a simple server that scrapes HAProxy stats and exports them via HTTP for
 Prometheus consumption.
 
+***Note:** since HAProxy 2.0.0, the official source includes a Prometheus exporter module that can be built into your binary with a single flag during build time and offers an exporter-free Prometheus endpoint. More information [down below](#official-prometheus-exporter).*
+
 ## Getting Started
 
 To run it:
@@ -116,3 +118,28 @@ make test
 ## License
 
 Apache License 2.0, see [LICENSE](https://github.com/prometheus/haproxy_exporter/blob/master/LICENSE).
+
+## Alternatives
+
+### Official Prometheus exporter
+
+As of 2.0.0, HAProxy includes a Prometheus exporter module that can be built into your binary during build time.
+
+To build with the official Prometheus exporter module, `make` with the following `EXTRA_OBJS` flag:
+
+```bash
+make TARGET=linux-glibc EXTRA_OBJS="contrib/prometheus-exporter/service-prometheus.o"
+```
+
+Once built, you can enable and configure the Prometheus endpoint from your `haproxy.cfg` file as a typical frontend:
+
+```haproxy
+frontend stats
+    bind *:8404
+    http-request use-service prometheus-exporter if { path /metrics }
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+```
+
+For more infromation, see [this official blog post](https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint/).
