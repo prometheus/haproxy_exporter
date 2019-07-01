@@ -57,6 +57,9 @@ haproxy_server_response_errors_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_retry_warnings_total Total of retry warnings.
 # TYPE haproxy_server_retry_warnings_total gauge
 haproxy_server_retry_warnings_total{backend="test",server="127.0.0.1:8080"} 0
+# HELP haproxy_server_server_selected_total Total number of times a server was selected, either for new sessions, or when re-dispatching.
+# TYPE haproxy_server_server_selected_total gauge
+haproxy_server_server_selected_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_sessions_total Total number of sessions.
 # TYPE haproxy_server_sessions_total gauge
 haproxy_server_sessions_total{backend="test",server="127.0.0.1:8080"} 0
