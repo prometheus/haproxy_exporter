@@ -89,7 +89,6 @@ func (m metrics) String() string {
 	return strings.Join(s, ",")
 }
 
-var haproxyUp = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of haproxy successful.", nil, nil)
 var serverMetricsString = "2,3,4,5,6,7,8,9,13,14,15,16,17,18,21,24,33,35,38,39,40,41,42,43,44"
 
 func addLabel(origin, add prometheus.Labels) prometheus.Labels {
