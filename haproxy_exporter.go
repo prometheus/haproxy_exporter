@@ -250,7 +250,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range e.serverMetrics {
 		ch <- m
 	}
-	ch <- haproxyUp
+	ch <- e.up.Desc()
 	ch <- e.totalScrapes.Desc()
 	ch <- e.csvParseFailures.Desc()
 }
@@ -263,7 +263,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	up := e.scrape(ch)
 
-	ch <- prometheus.MustNewConstMetric(haproxyUp, prometheus.GaugeValue, up)
+	ch <- prometheus.MustNewConstMetric(e.up.Desc(), prometheus.GaugeValue, up)
 	ch <- e.totalScrapes
 	ch <- e.csvParseFailures
 }
@@ -478,7 +478,7 @@ func main() {
 		for i, uri := range strings.Split(*haProxyScrapeURIs, ",") {
 
 			log.Infoln("Added socker uri: ", uri)
-			exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, *haProxyTimeout, prometheus.Labels{"socket": uri})
+			exporter, err := NewExporter(uri, *haProxySSLVerify, *haProxyTimeout, prometheus.Labels{"socket": uri})
 			if err != nil {
 				log.Fatal(err)
 			}
