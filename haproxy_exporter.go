@@ -448,13 +448,13 @@ func main() {
 	https://prometheus.io/docs/instrumenting/writing_clientlibs/#process-metrics.`
 
 	var (
-		listenAddress             = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
-		metricsPath               = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-		haProxyScrapeURI          = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
-		haProxySSLVerify          = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").Bool()
-		haProxyServerMetricFields = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
-		haProxyTimeout            = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
-		haProxyPidFile            = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
+		listenAddress             = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").OverrideDefaultFromEnvar("WEB_LISTENADRESS").String()
+		metricsPath               = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("WEB_METRICSPATH").String()
+		haProxyScrapeURI          = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").OverrideDefaultFromEnvar("HAPROXY_SCRAPEURI").String()
+		haProxySSLVerify          = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").OverrideDefaultFromEnvar("HAPROXY_SSLVERIFY").Bool()
+		haProxyServerMetricFields = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).OverrideDefaultFromEnvar("HAPROXY_SERVERMETRICFIELDS").String()
+		haProxyTimeout            = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").OverrideDefaultFromEnvar("HAPROXY_TIMEOUT").Duration()
+		haProxyPidFile            = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").OverrideDefaultFromEnvar("HAPROXY_PIDFILE").String()
 	)
 
 	log.AddFlags(kingpin.CommandLine)
