@@ -117,6 +117,8 @@ var (
 		42: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 		43: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 		44: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
+		49: newServerMetric("client_aborts_total", "Total number of data transfers aborted by the client.", nil),
+		50: newServerMetric("server_aborts_total", "Total number of data transfers aborted by the server.", nil),
 	}
 
 	frontendMetrics = metrics{
@@ -169,6 +171,8 @@ var (
 		42: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
 		43: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
 		44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
+		49: newBackendMetric("client_aborts_total", "Total number of data transfers aborted by the client.", nil),
+		50: newBackendMetric("server_aborts_total", "Total number of data transfers aborted by the server.", nil),
 		51: newBackendMetric("compressor_bytes_in_total", "Number of HTTP response bytes fed to the compressor", nil),
 		52: newBackendMetric("compressor_bytes_out_total", "Number of HTTP response bytes emitted by the compressor", nil),
 		53: newBackendMetric("compressor_bytes_bypassed_total", "Number of bytes that bypassed the HTTP compressor", nil),
