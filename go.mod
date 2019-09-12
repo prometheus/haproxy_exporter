@@ -5,3 +5,5 @@ require (
 	github.com/prometheus/common v0.4.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
+
+go 1.13
