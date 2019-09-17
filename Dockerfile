@@ -7,5 +7,6 @@ ARG ARCH="amd64"
 ARG OS="linux"
 COPY .build/${OS}-${ARCH}/haproxy_exporter /bin/haproxy_exporter
 
+USER nobody
 ENTRYPOINT ["/bin/haproxy_exporter"]
 EXPOSE     9101
