@@ -142,4 +142,4 @@ frontend stats
     stats refresh 10s
 ```
 
-For more infromation, see [this official blog post](https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint/).
+For more information, see [this official blog post](https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint/).
