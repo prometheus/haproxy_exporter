@@ -1,9 +1,0 @@
-language: go
-# Whenever the Go version is updated here, .circleci/config.yml and .promu.yml
-# should also be updated.
-go:
-- 1.12.x
-
-script:
- - make check_license style unused test lint
- - git diff --exit-code
