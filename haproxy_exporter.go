@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"encoding/csv"
 	"errors"
@@ -58,6 +59,9 @@ const (
 	ctimeMsField         = 59
 	rtimeMsField         = 60
 	ttimeMsField         = 61
+
+	showStatCmd = "show stat\n"
+	showInfoCmd = "show info\n"
 )
 
 var (
@@ -187,15 +191,17 @@ var (
 		61: newBackendMetric("http_total_time_average_seconds", "Avg. HTTP total time for last 1024 successful connections.", nil),
 	}
 
-	haproxyUp = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of haproxy successful.", nil, nil)
+	haproxyInfo = prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "HAProxy version info.", []string{"release_date", "version"}, nil)
+	haproxyUp   = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of HAProxy successful.", nil, nil)
 )
 
 // Exporter collects HAProxy stats from the given URI and exports them using
 // the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
-	fetch func() (io.ReadCloser, error)
+	URI       string
+	mutex     sync.RWMutex
+	fetchInfo func() (io.ReadCloser, error)
+	fetchStat func() (io.ReadCloser, error)
 
 	up                             prometheus.Gauge
 	totalScrapes, csvParseFailures prometheus.Counter
@@ -210,19 +216,22 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prom
 		return nil, err
 	}
 
-	var fetch func() (io.ReadCloser, error)
+	var fetchInfo func() (io.ReadCloser, error)
+	var fetchStat func() (io.ReadCloser, error)
 	switch u.Scheme {
 	case "http", "https", "file":
-		fetch = fetchHTTP(uri, sslVerify, timeout)
+		fetchStat = fetchHTTP(uri, sslVerify, timeout)
 	case "unix":
-		fetch = fetchUnix(u, timeout)
+		fetchInfo = fetchUnix(u, showInfoCmd, timeout)
+		fetchStat = fetchUnix(u, showStatCmd, timeout)
 	default:
 		return nil, fmt.Errorf("unsupported scheme: %q", u.Scheme)
 	}
 
 	return &Exporter{
-		URI:   uri,
-		fetch: fetch,
+		URI:       uri,
+		fetchInfo: fetchInfo,
+		fetchStat: fetchStat,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
@@ -255,6 +264,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range e.serverMetrics {
 		ch <- m
 	}
+	ch <- haproxyInfo
 	ch <- haproxyUp
 	ch <- e.totalScrapes.Desc()
 	ch <- e.csvParseFailures.Desc()
@@ -293,7 +303,7 @@ func fetchHTTP(uri string, sslVerify bool, timeout time.Duration) func() (io.Rea
 	}
 }
 
-func fetchUnix(u *url.URL, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchUnix(u *url.URL, cmd string, timeout time.Duration) func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
 		f, err := net.DialTimeout("unix", u.Path, timeout)
 		if err != nil {
@@ -303,7 +313,6 @@ func fetchUnix(u *url.URL, timeout time.Duration) func() (io.ReadCloser, error) 
 			f.Close()
 			return nil, err
 		}
-		cmd := "show stat\n"
 		n, err := io.WriteString(f, cmd)
 		if err != nil {
 			f.Close()
@@ -319,8 +328,25 @@ func fetchUnix(u *url.URL, timeout time.Duration) func() (io.ReadCloser, error) 
 
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) (up float64) {
 	e.totalScrapes.Inc()
+	var err error
 
-	body, err := e.fetch()
+	if e.fetchInfo != nil {
+		infoReader, err := e.fetchInfo()
+		if err != nil {
+			level.Error(e.logger).Log("msg", "Can't scrape HAProxy", "err", err)
+			return 0
+		}
+		defer infoReader.Close()
+
+		info, err := e.parseInfo(infoReader)
+		if err != nil {
+			level.Debug(e.logger).Log("msg", "Faild parsing show info", "err", err)
+		} else {
+			ch <- prometheus.MustNewConstMetric(haproxyInfo, prometheus.GaugeValue, 1, info.ReleaseDate, info.Version)
+		}
+	}
+
+	body, err := e.fetchStat()
 	if err != nil {
 		level.Error(e.logger).Log("msg", "Can't scrape HAProxy", "err", err)
 		return 0
@@ -350,6 +376,31 @@ loop:
 		e.parseRow(row, ch)
 	}
 	return 1
+}
+
+type versionInfo struct {
+	ReleaseDate string
+	Version     string
+}
+
+func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
+	var version, releaseDate string
+	s := bufio.NewScanner(i)
+	for s.Scan() {
+		line := s.Text()
+		if !strings.Contains(line, ":") {
+			continue
+		}
+
+		field := strings.SplitN(line, ": ", 2)
+		switch field[0] {
+		case "Release_date":
+			releaseDate = field[1]
+		case "Version":
+			version = field[1]
+		}
+	}
+	return versionInfo{ReleaseDate: releaseDate, Version: version}, s.Err()
 }
 
 func (e *Exporter) parseRow(csvRow []string, ch chan<- prometheus.Metric) {

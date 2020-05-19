@@ -75,6 +75,6 @@ haproxy_server_up{backend="test",server="127.0.0.1:8080"} 1
 # HELP haproxy_server_weight Current weight of the server.
 # TYPE haproxy_server_weight gauge
 haproxy_server_weight{backend="test",server="127.0.0.1:8080"} 1
-# HELP haproxy_up Was the last scrape of haproxy successful.
+# HELP haproxy_up Was the last scrape of HAProxy successful.
 # TYPE haproxy_up gauge
 haproxy_up 1
