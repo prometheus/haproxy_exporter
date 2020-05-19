@@ -13,6 +13,9 @@ haproxy_server_bytes_out_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_check_failures_total Total number of failed health checks.
 # TYPE haproxy_server_check_failures_total gauge
 haproxy_server_check_failures_total{backend="test",server="127.0.0.1:8080"} 0
+# HELP haproxy_server_client_aborts_total Total number of data transfers aborted by the client.
+# TYPE haproxy_server_client_aborts_total gauge
+haproxy_server_client_aborts_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_connection_errors_total Total of connection errors.
 # TYPE haproxy_server_connection_errors_total gauge
 haproxy_server_connection_errors_total{backend="test",server="127.0.0.1:8080"} 0
@@ -57,6 +60,9 @@ haproxy_server_response_errors_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_retry_warnings_total Total of retry warnings.
 # TYPE haproxy_server_retry_warnings_total gauge
 haproxy_server_retry_warnings_total{backend="test",server="127.0.0.1:8080"} 0
+# HELP haproxy_server_server_aborts_total Total number of data transfers aborted by the server.
+# TYPE haproxy_server_server_aborts_total gauge
+haproxy_server_server_aborts_total{backend="test",server="127.0.0.1:8080"} 0
 # HELP haproxy_server_server_selected_total Total number of times a server was selected, either for new sessions, or when re-dispatching.
 # TYPE haproxy_server_server_selected_total gauge
 haproxy_server_server_selected_total{backend="test",server="127.0.0.1:8080"} 0
