@@ -84,6 +84,6 @@ haproxy_server_up{backend="foo",server="foo-instance-0"} 1
 haproxy_server_weight{backend="foo",server="BACKEND"} 1
 haproxy_server_weight{backend="foo",server="FRONTEND"} 1
 haproxy_server_weight{backend="foo",server="foo-instance-0"} 1
-# HELP haproxy_up Was the last scrape of haproxy successful.
+# HELP haproxy_up Was the last scrape of HAProxy successful.
 # TYPE haproxy_up gauge
 haproxy_up 1

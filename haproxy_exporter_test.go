@@ -32,7 +32,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-const testSocket = "/tmp/haproxyexportertest.sock"
+const (
+	testSocket = "/tmp/haproxyexportertest.sock"
+	testInfo   = "Release_date: test date\nVersion: test version\n"
+)
 
 type haproxy struct {
 	*httptest.Server
@@ -167,7 +170,7 @@ func TestNotFound(t *testing.T) {
 	expectMetrics(t, e, "not_found.metrics")
 }
 
-func newHaproxyUnix(file, statsPayload string) (io.Closer, error) {
+func newHaproxyUnix(file, statsPayload string, infoPayload string) (io.Closer, error) {
 	if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -190,6 +193,9 @@ func newHaproxyUnix(file, statsPayload string) (io.Closer, error) {
 						return
 					}
 					switch l {
+					case "show info\n":
+						c.Write([]byte(infoPayload))
+						return
 					case "show stat\n":
 						c.Write([]byte(statsPayload))
 						return
@@ -209,7 +215,7 @@ func TestUnixDomain(t *testing.T) {
 		t.Skip("not on windows")
 		return
 	}
-	srv, err := newHaproxyUnix(testSocket, "test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,\n")
+	srv, err := newHaproxyUnix(testSocket, "test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,\n", testInfo)
 	if err != nil {
 		t.Fatalf("can't start test server: %v", err)
 	}
