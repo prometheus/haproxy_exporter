@@ -53,15 +53,17 @@ const (
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,
 	// HAProxy 1.7
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,agent_status,agent_code,agent_duration,check_desc,agent_desc,check_rise,check_fall,check_health,agent_rise,agent_fall,agent_health,addr,cookie,mode,algo,conn_rate,conn_rate_max,conn_tot,intercepted,dcon,dses
-	pxnameField          = 0
-	svnameField          = 1
-	typeField            = 32
 	minimumCsvFieldCount = 33
-	statusField          = 17
-	qtimeMsField         = 58
-	ctimeMsField         = 59
-	rtimeMsField         = 60
-	ttimeMsField         = 61
+
+	pxnameField        = 0
+	svnameField        = 1
+	statusField        = 17
+	typeField          = 32
+	checkDurationField = 38
+	qtimeMsField       = 58
+	ctimeMsField       = 59
+	rtimeMsField       = 60
+	ttimeMsField       = 61
 
 	excludedServerStates = ""
 	showStatCmd          = "show stat\n"
@@ -151,7 +153,7 @@ var (
 		30: newServerMetric("server_selected_total", "Total number of times a server was selected, either for new sessions, or when re-dispatching.", prometheus.CounterValue, nil),
 		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", prometheus.GaugeValue, nil),
 		35: newServerMetric("max_session_rate", "Maximum observed number of sessions per second.", prometheus.GaugeValue, nil),
-		38: newServerMetric("check_duration_milliseconds", "Previously run health check duration, in milliseconds", prometheus.GaugeValue, nil),
+		38: newServerMetric("check_duration_seconds", "Previously run health check duration, in seconds", prometheus.GaugeValue, nil),
 		39: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "1xx"}),
 		40: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "2xx"}),
 		41: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "3xx"}),
@@ -500,7 +502,7 @@ func (e *Exporter) exportCsvFields(metrics map[int]metricInfo, csvRow []string, 
 		case statusField:
 			valueInt = parseStatusField(valueStr)
 			value = float64(valueInt)
-		case qtimeMsField, ctimeMsField, rtimeMsField, ttimeMsField:
+		case checkDurationField, qtimeMsField, ctimeMsField, rtimeMsField, ttimeMsField:
 			value, err = strconv.ParseFloat(valueStr, 64)
 			value /= 1000
 		default:
