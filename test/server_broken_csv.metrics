@@ -14,11 +14,11 @@ haproxy_server_bytes_in_total{backend="foo",server="foo-instance-0"} 0
 haproxy_server_bytes_out_total{backend="foo",server="BACKEND"} 0
 haproxy_server_bytes_out_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_bytes_out_total{backend="foo",server="foo-instance-0"} 0
-# HELP haproxy_server_check_duration_milliseconds Previously run health check duration, in milliseconds
-# TYPE haproxy_server_check_duration_milliseconds gauge
-haproxy_server_check_duration_milliseconds{backend="foo",server="BACKEND"} 0
-haproxy_server_check_duration_milliseconds{backend="foo",server="FRONTEND"} 0
-haproxy_server_check_duration_milliseconds{backend="foo",server="foo-instance-0"} 0
+# HELP haproxy_server_check_duration_seconds Previously run health check duration, in seconds
+# TYPE haproxy_server_check_duration_seconds gauge
+haproxy_server_check_duration_seconds{backend="foo",server="BACKEND"} 0
+haproxy_server_check_duration_seconds{backend="foo",server="FRONTEND"} 0
+haproxy_server_check_duration_seconds{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_check_failures_total Total number of failed health checks.
 # TYPE haproxy_server_check_failures_total counter
 haproxy_server_check_failures_total{backend="foo",server="BACKEND"} 0
