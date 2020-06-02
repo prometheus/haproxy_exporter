@@ -74,7 +74,7 @@ func TestInvalidConfig(t *testing.T) {
 	h := newHaproxy([]byte("not,enough,fields"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 
 	expectMetrics(t, e, "invalid_config.metrics")
 }
@@ -83,7 +83,7 @@ func TestServerWithoutChecks(t *testing.T) {
 	h := newHaproxy([]byte("test,127.0.0.1:8080,0,0,0,0,0,0,0,0,,0,,0,0,0,0,no check,1,1,0,0,,,0,,1,1,1,,0,,2,0,,0,,,,0,0,0,0,0,0,0,,,,0,0,,,,,,,,,,,"))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 
 	expectMetrics(t, e, "server_without_checks.metrics")
 }
@@ -101,7 +101,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4O
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 
 	expectMetrics(t, e, "server_broken_csv.metrics")
 }
@@ -114,7 +114,7 @@ foo,BACKEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,
 	h := newHaproxy([]byte(data))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 
 	expectMetrics(t, e, "older_haproxy_versions.metrics")
 }
@@ -123,7 +123,7 @@ func TestConfigChangeDetection(t *testing.T) {
 	h := newHaproxy([]byte(""))
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 	ch := make(chan prometheus.Metric)
 
 	go func() {
@@ -150,7 +150,7 @@ func TestDeadline(t *testing.T) {
 		s.Close()
 	}()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second, log.NewNopLogger())
+	e, err := NewExporter(s.URL, true, serverMetrics, excludedServerStates, 1*time.Second, log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestNotFound(t *testing.T) {
 	s := httptest.NewServer(http.NotFoundHandler())
 	defer s.Close()
 
-	e, err := NewExporter(s.URL, true, serverMetrics, 1*time.Second, log.NewNopLogger())
+	e, err := NewExporter(s.URL, true, serverMetrics, excludedServerStates, 1*time.Second, log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestUnixDomain(t *testing.T) {
 	}
 	defer srv.Close()
 
-	e, err := NewExporter("unix:"+testSocket, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, err := NewExporter("unix:"+testSocket, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestUnixDomainNotFound(t *testing.T) {
 	if err := os.Remove(testSocket); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second, log.NewNopLogger())
+	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, excludedServerStates, 1*time.Second, log.NewNopLogger())
 	expectMetrics(t, e, "unix_domain_not_found.metrics")
 }
 
@@ -271,13 +271,13 @@ func TestUnixDomainDeadline(t *testing.T) {
 		}
 	}()
 
-	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, 1*time.Second, log.NewNopLogger())
+	e, _ := NewExporter("unix:"+testSocket, true, serverMetrics, excludedServerStates, 1*time.Second, log.NewNopLogger())
 
 	expectMetrics(t, e, "unix_domain_deadline.metrics")
 }
 
 func TestInvalidScheme(t *testing.T) {
-	e, err := NewExporter("gopher://gopher.quux.org", true, serverMetrics, 1*time.Second, log.NewNopLogger())
+	e, err := NewExporter("gopher://gopher.quux.org", true, serverMetrics, excludedServerStates, 1*time.Second, log.NewNopLogger())
 	if expect, got := (*Exporter)(nil), e; expect != got {
 		t.Errorf("expected %v, got %v", expect, got)
 	}
@@ -352,7 +352,7 @@ func BenchmarkExtract(b *testing.B) {
 	h := newHaproxy(config)
 	defer h.Close()
 
-	e, _ := NewExporter(h.URL, true, serverMetrics, 5*time.Second, log.NewNopLogger())
+	e, _ := NewExporter(h.URL, true, serverMetrics, excludedServerStates, 5*time.Second, log.NewNopLogger())
 
 	var before, after runtime.MemStats
 	runtime.GC()

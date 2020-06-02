@@ -53,6 +53,9 @@ const (
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,
 	// HAProxy 1.7
 	// pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,agent_status,agent_code,agent_duration,check_desc,agent_desc,check_rise,check_fall,check_health,agent_rise,agent_fall,agent_health,addr,cookie,mode,algo,conn_rate,conn_rate_max,conn_tot,intercepted,dcon,dses
+	pxnameField          = 0
+	svnameField          = 1
+	typeField            = 32
 	minimumCsvFieldCount = 33
 	statusField          = 17
 	qtimeMsField         = 58
@@ -60,8 +63,9 @@ const (
 	rtimeMsField         = 60
 	ttimeMsField         = 61
 
-	showStatCmd = "show stat\n"
-	showInfoCmd = "show info\n"
+	excludedServerStates = ""
+	showStatCmd          = "show stat\n"
+	showInfoCmd          = "show info\n"
 )
 
 var (
@@ -235,11 +239,12 @@ type Exporter struct {
 	up                             prometheus.Gauge
 	totalScrapes, csvParseFailures prometheus.Counter
 	serverMetrics                  map[int]metricInfo
+	excludedServerStates           map[string]struct{}
 	logger                         log.Logger
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metricInfo, timeout time.Duration, logger log.Logger) (*Exporter, error) {
+func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -255,6 +260,11 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metri
 		fetchStat = fetchUnix(u, showStatCmd, timeout)
 	default:
 		return nil, fmt.Errorf("unsupported scheme: %q", u.Scheme)
+	}
+
+	excludedServerStatesMap := map[string]struct{}{}
+	for _, f := range strings.Split(excludedServerStates, ",") {
+		excludedServerStatesMap[f] = struct{}{}
 	}
 
 	return &Exporter{
@@ -276,8 +286,9 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metri
 			Name:      "exporter_csv_parse_failures_total",
 			Help:      "Number of errors while parsing CSV.",
 		}),
-		serverMetrics: selectedServerMetrics,
-		logger:        logger,
+		serverMetrics:        selectedServerMetrics,
+		excludedServerStates: excludedServerStatesMap,
+		logger:               logger,
 	}, nil
 }
 
@@ -439,7 +450,7 @@ func (e *Exporter) parseRow(csvRow []string, ch chan<- prometheus.Metric) {
 		return
 	}
 
-	pxname, svname, typ := csvRow[0], csvRow[1], csvRow[32]
+	pxname, svname, status, typ := csvRow[pxnameField], csvRow[svnameField], csvRow[statusField], csvRow[typeField]
 
 	const (
 		frontend = "0"
@@ -453,15 +464,18 @@ func (e *Exporter) parseRow(csvRow []string, ch chan<- prometheus.Metric) {
 	case backend:
 		e.exportCsvFields(backendMetrics, csvRow, ch, pxname)
 	case server:
-		e.exportCsvFields(e.serverMetrics, csvRow, ch, pxname, svname)
+
+		if _, ok := e.excludedServerStates[status]; !ok {
+			e.exportCsvFields(e.serverMetrics, csvRow, ch, pxname, svname)
+		}
 	}
 }
 
 func parseStatusField(value string) int64 {
 	switch value {
-	case "UP", "UP 1/3", "UP 2/3", "OPEN", "no check":
+	case "UP", "UP 1/3", "UP 2/3", "OPEN", "no check", "DRAIN":
 		return 1
-	case "DOWN", "DOWN 1/2", "NOLB", "MAINT":
+	default: //case "DOWN", "DOWN 1/2", "NOLB", "MAINT", "MAINT(via)", "MAINT(resolution)":
 		return 0
 	}
 	return 0
@@ -510,20 +524,16 @@ func filterServerMetrics(filter string) (map[int]metricInfo, error) {
 		return metrics, nil
 	}
 
-	selected := map[int]struct{}{}
 	for _, f := range strings.Split(filter, ",") {
 		field, err := strconv.Atoi(f)
 		if err != nil {
 			return nil, fmt.Errorf("invalid server metric field number: %v", f)
 		}
-		selected[field] = struct{}{}
-	}
-
-	for field, metric := range serverMetrics {
-		if _, ok := selected[field]; ok {
+		if metric, ok := serverMetrics[field]; ok {
 			metrics[field] = metric
 		}
 	}
+
 	return metrics, nil
 }
 
@@ -538,13 +548,14 @@ func main() {
 	https://prometheus.io/docs/instrumenting/writing_clientlibs/#process-metrics.`
 
 	var (
-		listenAddress             = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
-		metricsPath               = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-		haProxyScrapeURI          = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
-		haProxySSLVerify          = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").Bool()
-		haProxyServerMetricFields = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
-		haProxyTimeout            = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
-		haProxyPidFile            = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
+		listenAddress              = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
+		metricsPath                = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		haProxyScrapeURI           = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
+		haProxySSLVerify           = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").Bool()
+		haProxyServerMetricFields  = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
+		haProxyServerExcludeStates = kingpin.Flag("haproxy.server-exclude-states", "Comma-separated list of exported server states to exclude. See https://cbonte.github.io/haproxy-dconv/1.8/management.html#9.1, field 17 statuus").Default(excludedServerStates).String()
+		haProxyTimeout             = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
+		haProxyPidFile             = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
 	)
 
 	promlogConfig := &promlog.Config{}
@@ -562,7 +573,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting haproxy_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
-	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, selectedServerMetrics, *haProxyTimeout, logger)
+	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating an exporter", "err", err)
 		os.Exit(1)
