@@ -1,26 +1,26 @@
-# HELP haproxy_exporter_csv_parse_failures Number of errors while parsing CSV.
-# TYPE haproxy_exporter_csv_parse_failures counter
-haproxy_exporter_csv_parse_failures 0
-# HELP haproxy_exporter_total_scrapes Current total HAProxy scrapes.
-# TYPE haproxy_exporter_total_scrapes counter
-haproxy_exporter_total_scrapes 1
+# HELP haproxy_exporter_csv_parse_failures_total Number of errors while parsing CSV.
+# TYPE haproxy_exporter_csv_parse_failures_total counter
+haproxy_exporter_csv_parse_failures_total 0
+# HELP haproxy_exporter_scrapes_total Current total HAProxy scrapes.
+# TYPE haproxy_exporter_scrapes_total counter
+haproxy_exporter_scrapes_total 1
 # HELP haproxy_server_bytes_in_total Current total of incoming bytes.
-# TYPE haproxy_server_bytes_in_total gauge
+# TYPE haproxy_server_bytes_in_total counter
 haproxy_server_bytes_in_total{backend="foo",server="BACKEND"} 0
 haproxy_server_bytes_in_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_bytes_in_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_bytes_out_total Current total of outgoing bytes.
-# TYPE haproxy_server_bytes_out_total gauge
+# TYPE haproxy_server_bytes_out_total counter
 haproxy_server_bytes_out_total{backend="foo",server="BACKEND"} 0
 haproxy_server_bytes_out_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_bytes_out_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_check_failures_total Total number of failed health checks.
-# TYPE haproxy_server_check_failures_total gauge
+# TYPE haproxy_server_check_failures_total counter
 haproxy_server_check_failures_total{backend="foo",server="BACKEND"} 0
 haproxy_server_check_failures_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_check_failures_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_connection_errors_total Total of connection errors.
-# TYPE haproxy_server_connection_errors_total gauge
+# TYPE haproxy_server_connection_errors_total counter
 haproxy_server_connection_errors_total{backend="foo",server="BACKEND"} 0
 haproxy_server_connection_errors_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_connection_errors_total{backend="foo",server="foo-instance-0"} 0
@@ -35,7 +35,7 @@ haproxy_server_current_sessions{backend="foo",server="BACKEND"} 0
 haproxy_server_current_sessions{backend="foo",server="FRONTEND"} 0
 haproxy_server_current_sessions{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_downtime_seconds_total Total downtime in seconds.
-# TYPE haproxy_server_downtime_seconds_total gauge
+# TYPE haproxy_server_downtime_seconds_total counter
 haproxy_server_downtime_seconds_total{backend="foo",server="BACKEND"} 0
 haproxy_server_downtime_seconds_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_downtime_seconds_total{backend="foo",server="foo-instance-0"} 0
@@ -50,27 +50,27 @@ haproxy_server_max_sessions{backend="foo",server="BACKEND"} 0
 haproxy_server_max_sessions{backend="foo",server="FRONTEND"} 0
 haproxy_server_max_sessions{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_redispatch_warnings_total Total of redispatch warnings.
-# TYPE haproxy_server_redispatch_warnings_total gauge
+# TYPE haproxy_server_redispatch_warnings_total counter
 haproxy_server_redispatch_warnings_total{backend="foo",server="BACKEND"} 0
 haproxy_server_redispatch_warnings_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_redispatch_warnings_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_response_errors_total Total of response errors.
-# TYPE haproxy_server_response_errors_total gauge
+# TYPE haproxy_server_response_errors_total counter
 haproxy_server_response_errors_total{backend="foo",server="BACKEND"} 0
 haproxy_server_response_errors_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_response_errors_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_retry_warnings_total Total of retry warnings.
-# TYPE haproxy_server_retry_warnings_total gauge
+# TYPE haproxy_server_retry_warnings_total counter
 haproxy_server_retry_warnings_total{backend="foo",server="BACKEND"} 0
 haproxy_server_retry_warnings_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_retry_warnings_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_server_selected_total Total number of times a server was selected, either for new sessions, or when re-dispatching.
-# TYPE haproxy_server_server_selected_total gauge
+# TYPE haproxy_server_server_selected_total counter
 haproxy_server_server_selected_total{backend="foo",server="BACKEND"} 0
 haproxy_server_server_selected_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_server_selected_total{backend="foo",server="foo-instance-0"} 0
 # HELP haproxy_server_sessions_total Total number of sessions.
-# TYPE haproxy_server_sessions_total gauge
+# TYPE haproxy_server_sessions_total counter
 haproxy_server_sessions_total{backend="foo",server="BACKEND"} 0
 haproxy_server_sessions_total{backend="foo",server="FRONTEND"} 0
 haproxy_server_sessions_total{backend="foo",server="foo-instance-0"} 0
