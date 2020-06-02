@@ -74,19 +74,48 @@ var (
 	serverLabelNames   = []string{"backend", "server"}
 )
 
-func newFrontendMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "frontend", metricName), docString, frontendLabelNames, constLabels)
+type metricInfo struct {
+	Desc *prometheus.Desc
+	Type prometheus.ValueType
 }
 
-func newBackendMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "backend", metricName), docString, backendLabelNames, constLabels)
+func newFrontendMetric(metricName string, docString string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
+	return metricInfo{
+		Desc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "frontend", metricName),
+			docString,
+			frontendLabelNames,
+			constLabels,
+		),
+		Type: t,
+	}
 }
 
-func newServerMetric(metricName string, docString string, constLabels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "server", metricName), docString, serverLabelNames, constLabels)
+func newBackendMetric(metricName string, docString string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
+	return metricInfo{
+		Desc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "backend", metricName),
+			docString,
+			backendLabelNames,
+			constLabels,
+		),
+		Type: t,
+	}
 }
 
-type metrics map[int]*prometheus.Desc
+func newServerMetric(metricName string, docString string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
+	return metricInfo{
+		Desc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "server", metricName),
+			docString,
+			serverLabelNames,
+			constLabels,
+		),
+		Type: t,
+	}
+}
+
+type metrics map[int]metricInfo
 
 func (m metrics) String() string {
 	keys := make([]int, 0, len(m))
@@ -103,96 +132,96 @@ func (m metrics) String() string {
 
 var (
 	serverMetrics = metrics{
-		2:  newServerMetric("current_queue", "Current number of queued requests assigned to this server.", nil),
-		3:  newServerMetric("max_queue", "Maximum observed number of queued requests assigned to this server.", nil),
-		4:  newServerMetric("current_sessions", "Current number of active sessions.", nil),
-		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", nil),
-		6:  newServerMetric("limit_sessions", "Configured session limit.", nil),
-		7:  newServerMetric("sessions_total", "Total number of sessions.", nil),
-		8:  newServerMetric("bytes_in_total", "Current total of incoming bytes.", nil),
-		9:  newServerMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
-		13: newServerMetric("connection_errors_total", "Total of connection errors.", nil),
-		14: newServerMetric("response_errors_total", "Total of response errors.", nil),
-		15: newServerMetric("retry_warnings_total", "Total of retry warnings.", nil),
-		16: newServerMetric("redispatch_warnings_total", "Total of redispatch warnings.", nil),
-		17: newServerMetric("up", "Current health status of the server (1 = UP, 0 = DOWN).", nil),
-		18: newServerMetric("weight", "Current weight of the server.", nil),
-		21: newServerMetric("check_failures_total", "Total number of failed health checks.", nil),
-		24: newServerMetric("downtime_seconds_total", "Total downtime in seconds.", nil),
-		30: newServerMetric("server_selected_total", "Total number of times a server was selected, either for new sessions, or when re-dispatching.", nil),
-		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
-		35: newServerMetric("max_session_rate", "Maximum observed number of sessions per second.", nil),
-		38: newServerMetric("check_duration_milliseconds", "Previously run health check duration, in milliseconds", nil),
-		39: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
-		40: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
-		41: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
-		42: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
-		43: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
-		44: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
-		49: newServerMetric("client_aborts_total", "Total number of data transfers aborted by the client.", nil),
-		50: newServerMetric("server_aborts_total", "Total number of data transfers aborted by the server.", nil),
+		2:  newServerMetric("current_queue", "Current number of queued requests assigned to this server.", prometheus.GaugeValue, nil),
+		3:  newServerMetric("max_queue", "Maximum observed number of queued requests assigned to this server.", prometheus.GaugeValue, nil),
+		4:  newServerMetric("current_sessions", "Current number of active sessions.", prometheus.GaugeValue, nil),
+		5:  newServerMetric("max_sessions", "Maximum observed number of active sessions.", prometheus.GaugeValue, nil),
+		6:  newServerMetric("limit_sessions", "Configured session limit.", prometheus.GaugeValue, nil),
+		7:  newServerMetric("sessions_total", "Total number of sessions.", prometheus.CounterValue, nil),
+		8:  newServerMetric("bytes_in_total", "Current total of incoming bytes.", prometheus.CounterValue, nil),
+		9:  newServerMetric("bytes_out_total", "Current total of outgoing bytes.", prometheus.CounterValue, nil),
+		13: newServerMetric("connection_errors_total", "Total of connection errors.", prometheus.CounterValue, nil),
+		14: newServerMetric("response_errors_total", "Total of response errors.", prometheus.CounterValue, nil),
+		15: newServerMetric("retry_warnings_total", "Total of retry warnings.", prometheus.CounterValue, nil),
+		16: newServerMetric("redispatch_warnings_total", "Total of redispatch warnings.", prometheus.CounterValue, nil),
+		17: newServerMetric("up", "Current health status of the server (1 = UP, 0 = DOWN).", prometheus.GaugeValue, nil),
+		18: newServerMetric("weight", "Current weight of the server.", prometheus.GaugeValue, nil),
+		21: newServerMetric("check_failures_total", "Total number of failed health checks.", prometheus.CounterValue, nil),
+		24: newServerMetric("downtime_seconds_total", "Total downtime in seconds.", prometheus.CounterValue, nil),
+		30: newServerMetric("server_selected_total", "Total number of times a server was selected, either for new sessions, or when re-dispatching.", prometheus.CounterValue, nil),
+		33: newServerMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", prometheus.GaugeValue, nil),
+		35: newServerMetric("max_session_rate", "Maximum observed number of sessions per second.", prometheus.GaugeValue, nil),
+		38: newServerMetric("check_duration_milliseconds", "Previously run health check duration, in milliseconds", prometheus.GaugeValue, nil),
+		39: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "1xx"}),
+		40: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "2xx"}),
+		41: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "3xx"}),
+		42: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "4xx"}),
+		43: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "5xx"}),
+		44: newServerMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "other"}),
+		49: newServerMetric("client_aborts_total", "Total number of data transfers aborted by the client.", prometheus.CounterValue, nil),
+		50: newServerMetric("server_aborts_total", "Total number of data transfers aborted by the server.", prometheus.CounterValue, nil),
 	}
 
 	frontendMetrics = metrics{
-		4:  newFrontendMetric("current_sessions", "Current number of active sessions.", nil),
-		5:  newFrontendMetric("max_sessions", "Maximum observed number of active sessions.", nil),
-		6:  newFrontendMetric("limit_sessions", "Configured session limit.", nil),
-		7:  newFrontendMetric("sessions_total", "Total number of sessions.", nil),
-		8:  newFrontendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
-		9:  newFrontendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
-		10: newFrontendMetric("requests_denied_total", "Total of requests denied for security.", nil),
-		12: newFrontendMetric("request_errors_total", "Total of request errors.", nil),
-		33: newFrontendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
-		34: newFrontendMetric("limit_session_rate", "Configured limit on new sessions per second.", nil),
-		35: newFrontendMetric("max_session_rate", "Maximum observed number of sessions per second.", nil),
-		39: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
-		40: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
-		41: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
-		42: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
-		43: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
-		44: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
-		48: newFrontendMetric("http_requests_total", "Total HTTP requests.", nil),
-		51: newFrontendMetric("compressor_bytes_in_total", "Number of HTTP response bytes fed to the compressor", nil),
-		52: newFrontendMetric("compressor_bytes_out_total", "Number of HTTP response bytes emitted by the compressor", nil),
-		53: newFrontendMetric("compressor_bytes_bypassed_total", "Number of bytes that bypassed the HTTP compressor", nil),
-		54: newFrontendMetric("http_responses_compressed_total", "Number of HTTP responses that were compressed", nil),
-		79: newFrontendMetric("connections_total", "Total number of connections", nil),
+		4:  newFrontendMetric("current_sessions", "Current number of active sessions.", prometheus.GaugeValue, nil),
+		5:  newFrontendMetric("max_sessions", "Maximum observed number of active sessions.", prometheus.GaugeValue, nil),
+		6:  newFrontendMetric("limit_sessions", "Configured session limit.", prometheus.GaugeValue, nil),
+		7:  newFrontendMetric("sessions_total", "Total number of sessions.", prometheus.CounterValue, nil),
+		8:  newFrontendMetric("bytes_in_total", "Current total of incoming bytes.", prometheus.CounterValue, nil),
+		9:  newFrontendMetric("bytes_out_total", "Current total of outgoing bytes.", prometheus.CounterValue, nil),
+		10: newFrontendMetric("requests_denied_total", "Total of requests denied for security.", prometheus.CounterValue, nil),
+		12: newFrontendMetric("request_errors_total", "Total of request errors.", prometheus.CounterValue, nil),
+		33: newFrontendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", prometheus.GaugeValue, nil),
+		34: newFrontendMetric("limit_session_rate", "Configured limit on new sessions per second.", prometheus.GaugeValue, nil),
+		35: newFrontendMetric("max_session_rate", "Maximum observed number of sessions per second.", prometheus.GaugeValue, nil),
+		39: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "1xx"}),
+		40: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "2xx"}),
+		41: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "3xx"}),
+		42: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "4xx"}),
+		43: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "5xx"}),
+		44: newFrontendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "other"}),
+		48: newFrontendMetric("http_requests_total", "Total HTTP requests.", prometheus.CounterValue, nil),
+		51: newFrontendMetric("compressor_bytes_in_total", "Number of HTTP response bytes fed to the compressor", prometheus.CounterValue, nil),
+		52: newFrontendMetric("compressor_bytes_out_total", "Number of HTTP response bytes emitted by the compressor", prometheus.CounterValue, nil),
+		53: newFrontendMetric("compressor_bytes_bypassed_total", "Number of bytes that bypassed the HTTP compressor", prometheus.CounterValue, nil),
+		54: newFrontendMetric("http_responses_compressed_total", "Number of HTTP responses that were compressed", prometheus.CounterValue, nil),
+		79: newFrontendMetric("connections_total", "Total number of connections", prometheus.CounterValue, nil),
 	}
 	backendMetrics = metrics{
-		2:  newBackendMetric("current_queue", "Current number of queued requests not assigned to any server.", nil),
-		3:  newBackendMetric("max_queue", "Maximum observed number of queued requests not assigned to any server.", nil),
-		4:  newBackendMetric("current_sessions", "Current number of active sessions.", nil),
-		5:  newBackendMetric("max_sessions", "Maximum observed number of active sessions.", nil),
-		6:  newBackendMetric("limit_sessions", "Configured session limit.", nil),
-		7:  newBackendMetric("sessions_total", "Total number of sessions.", nil),
-		8:  newBackendMetric("bytes_in_total", "Current total of incoming bytes.", nil),
-		9:  newBackendMetric("bytes_out_total", "Current total of outgoing bytes.", nil),
-		13: newBackendMetric("connection_errors_total", "Total of connection errors.", nil),
-		14: newBackendMetric("response_errors_total", "Total of response errors.", nil),
-		15: newBackendMetric("retry_warnings_total", "Total of retry warnings.", nil),
-		16: newBackendMetric("redispatch_warnings_total", "Total of redispatch warnings.", nil),
-		17: newBackendMetric("up", "Current health status of the backend (1 = UP, 0 = DOWN).", nil),
-		18: newBackendMetric("weight", "Total weight of the servers in the backend.", nil),
-		19: newBackendMetric("current_server", "Current number of active servers", nil),
-		30: newBackendMetric("server_selected_total", "Total number of times a server was selected, either for new sessions, or when re-dispatching.", nil),
-		33: newBackendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", nil),
-		35: newBackendMetric("max_session_rate", "Maximum number of sessions per second.", nil),
-		39: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "1xx"}),
-		40: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "2xx"}),
-		41: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "3xx"}),
-		42: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "4xx"}),
-		43: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "5xx"}),
-		44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.Labels{"code": "other"}),
-		49: newBackendMetric("client_aborts_total", "Total number of data transfers aborted by the client.", nil),
-		50: newBackendMetric("server_aborts_total", "Total number of data transfers aborted by the server.", nil),
-		51: newBackendMetric("compressor_bytes_in_total", "Number of HTTP response bytes fed to the compressor", nil),
-		52: newBackendMetric("compressor_bytes_out_total", "Number of HTTP response bytes emitted by the compressor", nil),
-		53: newBackendMetric("compressor_bytes_bypassed_total", "Number of bytes that bypassed the HTTP compressor", nil),
-		54: newBackendMetric("http_responses_compressed_total", "Number of HTTP responses that were compressed", nil),
-		58: newBackendMetric("http_queue_time_average_seconds", "Avg. HTTP queue time for last 1024 successful connections.", nil),
-		59: newBackendMetric("http_connect_time_average_seconds", "Avg. HTTP connect time for last 1024 successful connections.", nil),
-		60: newBackendMetric("http_response_time_average_seconds", "Avg. HTTP response time for last 1024 successful connections.", nil),
-		61: newBackendMetric("http_total_time_average_seconds", "Avg. HTTP total time for last 1024 successful connections.", nil),
+		2:  newBackendMetric("current_queue", "Current number of queued requests not assigned to any server.", prometheus.GaugeValue, nil),
+		3:  newBackendMetric("max_queue", "Maximum observed number of queued requests not assigned to any server.", prometheus.GaugeValue, nil),
+		4:  newBackendMetric("current_sessions", "Current number of active sessions.", prometheus.GaugeValue, nil),
+		5:  newBackendMetric("max_sessions", "Maximum observed number of active sessions.", prometheus.GaugeValue, nil),
+		6:  newBackendMetric("limit_sessions", "Configured session limit.", prometheus.GaugeValue, nil),
+		7:  newBackendMetric("sessions_total", "Total number of sessions.", prometheus.CounterValue, nil),
+		8:  newBackendMetric("bytes_in_total", "Current total of incoming bytes.", prometheus.CounterValue, nil),
+		9:  newBackendMetric("bytes_out_total", "Current total of outgoing bytes.", prometheus.CounterValue, nil),
+		13: newBackendMetric("connection_errors_total", "Total of connection errors.", prometheus.CounterValue, nil),
+		14: newBackendMetric("response_errors_total", "Total of response errors.", prometheus.CounterValue, nil),
+		15: newBackendMetric("retry_warnings_total", "Total of retry warnings.", prometheus.CounterValue, nil),
+		16: newBackendMetric("redispatch_warnings_total", "Total of redispatch warnings.", prometheus.CounterValue, nil),
+		17: newBackendMetric("up", "Current health status of the backend (1 = UP, 0 = DOWN).", prometheus.GaugeValue, nil),
+		18: newBackendMetric("weight", "Total weight of the servers in the backend.", prometheus.GaugeValue, nil),
+		19: newBackendMetric("current_server", "Current number of active servers", prometheus.GaugeValue, nil),
+		30: newBackendMetric("server_selected_total", "Total number of times a server was selected, either for new sessions, or when re-dispatching.", prometheus.CounterValue, nil),
+		33: newBackendMetric("current_session_rate", "Current number of sessions per second over last elapsed second.", prometheus.GaugeValue, nil),
+		35: newBackendMetric("max_session_rate", "Maximum number of sessions per second.", prometheus.GaugeValue, nil),
+		39: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "1xx"}),
+		40: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "2xx"}),
+		41: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "3xx"}),
+		42: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "4xx"}),
+		43: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "5xx"}),
+		44: newBackendMetric("http_responses_total", "Total of HTTP responses.", prometheus.CounterValue, prometheus.Labels{"code": "other"}),
+		49: newBackendMetric("client_aborts_total", "Total number of data transfers aborted by the client.", prometheus.CounterValue, nil),
+		50: newBackendMetric("server_aborts_total", "Total number of data transfers aborted by the server.", prometheus.CounterValue, nil),
+		51: newBackendMetric("compressor_bytes_in_total", "Number of HTTP response bytes fed to the compressor", prometheus.CounterValue, nil),
+		52: newBackendMetric("compressor_bytes_out_total", "Number of HTTP response bytes emitted by the compressor", prometheus.CounterValue, nil),
+		53: newBackendMetric("compressor_bytes_bypassed_total", "Number of bytes that bypassed the HTTP compressor", prometheus.CounterValue, nil),
+		54: newBackendMetric("http_responses_compressed_total", "Number of HTTP responses that were compressed", prometheus.CounterValue, nil),
+		58: newBackendMetric("http_queue_time_average_seconds", "Avg. HTTP queue time for last 1024 successful connections.", prometheus.GaugeValue, nil),
+		59: newBackendMetric("http_connect_time_average_seconds", "Avg. HTTP connect time for last 1024 successful connections.", prometheus.GaugeValue, nil),
+		60: newBackendMetric("http_response_time_average_seconds", "Avg. HTTP response time for last 1024 successful connections.", prometheus.GaugeValue, nil),
+		61: newBackendMetric("http_total_time_average_seconds", "Avg. HTTP total time for last 1024 successful connections.", prometheus.GaugeValue, nil),
 	}
 
 	haproxyInfo = prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "HAProxy version info.", []string{"release_date", "version"}, nil)
@@ -209,13 +238,13 @@ type Exporter struct {
 
 	up                             prometheus.Gauge
 	totalScrapes, csvParseFailures prometheus.Counter
-	serverMetrics                  map[int]*prometheus.Desc
+	serverMetrics                  map[int]metricInfo
 	excludedServerStates           map[string]struct{}
 	logger                         log.Logger
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prometheus.Desc, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
+func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -249,12 +278,12 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prom
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "exporter_total_scrapes",
+			Name:      "exporter_scrapes_total",
 			Help:      "Current total HAProxy scrapes.",
 		}),
 		csvParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "exporter_csv_parse_failures",
+			Name:      "exporter_csv_parse_failures_total",
 			Help:      "Number of errors while parsing CSV.",
 		}),
 		serverMetrics:        selectedServerMetrics,
@@ -267,13 +296,13 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]*prom
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range frontendMetrics {
-		ch <- m
+		ch <- m.Desc
 	}
 	for _, m := range backendMetrics {
-		ch <- m
+		ch <- m.Desc
 	}
 	for _, m := range e.serverMetrics {
-		ch <- m
+		ch <- m.Desc
 	}
 	ch <- haproxyInfo
 	ch <- haproxyUp
@@ -452,7 +481,7 @@ func parseStatusField(value string) int64 {
 	return 0
 }
 
-func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.Desc, csvRow []string, ch chan<- prometheus.Metric, labels ...string) {
+func (e *Exporter) exportCsvFields(metrics map[int]metricInfo, csvRow []string, ch chan<- prometheus.Metric, labels ...string) {
 	for fieldIdx, metric := range metrics {
 		if fieldIdx > len(csvRow)-1 {
 			// We can't break here because we are not looping over the fields in sorted order.
@@ -483,14 +512,14 @@ func (e *Exporter) exportCsvFields(metrics map[int]*prometheus.Desc, csvRow []st
 			e.csvParseFailures.Inc()
 			continue
 		}
-		ch <- prometheus.MustNewConstMetric(metric, prometheus.GaugeValue, value, labels...)
+		ch <- prometheus.MustNewConstMetric(metric.Desc, metric.Type, value, labels...)
 	}
 }
 
 // filterServerMetrics returns the set of server metrics specified by the comma
 // separated filter.
-func filterServerMetrics(filter string) (map[int]*prometheus.Desc, error) {
-	metrics := map[int]*prometheus.Desc{}
+func filterServerMetrics(filter string) (map[int]metricInfo, error) {
+	metrics := map[int]metricInfo{}
 	if len(filter) == 0 {
 		return metrics, nil
 	}

@@ -320,10 +320,10 @@ func TestParseStatusField(t *testing.T) {
 func TestFilterServerMetrics(t *testing.T) {
 	tests := []struct {
 		input string
-		want  map[int]*prometheus.Desc
+		want  map[int]metricInfo
 	}{
-		{input: "", want: map[int]*prometheus.Desc{}},
-		{input: "8", want: map[int]*prometheus.Desc{8: serverMetrics[8]}},
+		{input: "", want: map[int]metricInfo{}},
+		{input: "8", want: map[int]metricInfo{8: metricInfo{Desc: serverMetrics[8].Desc, Type: prometheus.CounterValue}}},
 		{input: serverMetrics.String(), want: serverMetrics},
 	}
 
