@@ -52,7 +52,7 @@ haproxy_exporter  --haproxy.scrape-uri="http://user:pass@haproxy.example.com/hap
 ```
 
 You can also scrape HTTPS URLs. Certificate validation is enabled by default, but
-you can disable it using the `--haproxy.ssl-verify=false` flag:
+you can disable it using the `--no-haproxy.ssl-verify` flag:
 
 ```bash
 haproxy_exporter --no-haproxy.ssl-verify --haproxy.scrape-uri="https://haproxy.example.com/haproxy?stats;csv"
