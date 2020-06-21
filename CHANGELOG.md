@@ -1,3 +1,19 @@
+## 0.11.0 / 2020-06-21
+
+* [CHANGE] Switch logging to go-kit #171
+* [CHANGE] Fix metric types #182
+* [CHANGE] Fix unit of time metric #183
+* [FEATURE] Add filtering on server status #160
+* [ENHANCEMENT] Add compression and server selection metrics #154
+* [ENHANCEMENT] Add client/server abort metrics #167
+* [ENHANCEMENT] Add version info metric (when using UNIX sockets) #180
+
+Note: This release fixes the metric types of counters and renames the following metrics:
+
+* `haproxy_exporter_csv_parse_failures` -> `haproxy_exporter_csv_parse_failures_total`
+* `haproxy_exporter_total_scrapes` -> `haproxy_exporter_scrapes_total`
+* `haproxy_server_check_duration_milliseconds` -> `haproxy_server_check_duration_seconds`
+
 ## 0.10.0 / 2019-01-15
 
 * [ENHANCEMENT] Convert metrics collection to Const metrics #139
