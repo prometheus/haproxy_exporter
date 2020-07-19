@@ -447,7 +447,7 @@ func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
 
 func (e *Exporter) parseRow(csvRow []string, ch chan<- prometheus.Metric) {
 	if len(csvRow) < minimumCsvFieldCount {
-		level.Error(e.logger).Log("msg", "Parser received unexpected number of CSV fileds", "min", minimumCsvFieldCount, "received", len(csvRow))
+		level.Error(e.logger).Log("msg", "Parser received unexpected number of CSV fields", "min", minimumCsvFieldCount, "received", len(csvRow))
 		e.csvParseFailures.Inc()
 		return
 	}
