@@ -382,7 +382,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) (up float64) {
 
 		info, err := e.parseInfo(infoReader)
 		if err != nil {
-			level.Debug(e.logger).Log("msg", "Faild parsing show info", "err", err)
+			level.Debug(e.logger).Log("msg", "Failed parsing show info", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(haproxyInfo, prometheus.GaugeValue, 1, info.ReleaseDate, info.Version)
 		}
