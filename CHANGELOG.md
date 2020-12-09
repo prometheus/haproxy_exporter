@@ -1,3 +1,9 @@
+## 0.12.0 / 2020-12-09
+
+* [ENHANCEMENT] Add --version flag #189
+* [BUGFIX] Use newest Go version to fix random panic in the runtime
+* [BUGFIX] Fix typos in log messages #188 #191
+
 ## 0.11.0 / 2020-06-21
 
 * [CHANGE] Switch logging to go-kit #171
