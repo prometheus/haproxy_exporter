@@ -553,6 +553,7 @@ func main() {
 	var (
 		listenAddress              = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9101").String()
 		metricsPath                = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		removeGolangMetric         = kingpin.Flag("web.remove-go-metrics", "Remove default prometheus metrics from exported metrics").Default("false").Bool()
 		haProxyScrapeURI           = kingpin.Flag("haproxy.scrape-uri", "URI on which to scrape HAProxy.").Default("http://localhost/;csv").String()
 		haProxySSLVerify           = kingpin.Flag("haproxy.ssl-verify", "Flag that enables SSL certificate verification for the scrape URI").Default("true").Bool()
 		haProxyServerMetricFields  = kingpin.Flag("haproxy.server-metric-fields", "Comma-separated list of exported server metrics. See http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1").Default(serverMetrics.String()).String()
@@ -577,13 +578,21 @@ func main() {
 	level.Info(logger).Log("msg", "Starting haproxy_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
+	var registerer = prometheus.DefaultRegisterer
+	var gatherer = prometheus.DefaultGatherer
+	if *removeGolangMetric {
+		// using a new registry means that all internal metrics from prom will _not_ be exposed
+		registry := prometheus.NewRegistry()
+		registerer, gatherer = registry, registry
+	}
+
 	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating an exporter", "err", err)
 		os.Exit(1)
 	}
-	prometheus.MustRegister(exporter)
-	prometheus.MustRegister(version.NewCollector("haproxy_exporter"))
+	registerer.MustRegister(exporter)
+	registerer.MustRegister(version.NewCollector("haproxy_exporter"))
 
 	if *haProxyPidFile != "" {
 		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
@@ -600,11 +609,12 @@ func main() {
 			},
 			Namespace: namespace,
 		})
-		prometheus.MustRegister(procExporter)
+		registerer.MustRegister(procExporter)
 	}
 
 	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
-	http.Handle(*metricsPath, promhttp.Handler())
+	promHandler := promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{})
+	http.Handle(*metricsPath, promHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Haproxy Exporter</title></head>
