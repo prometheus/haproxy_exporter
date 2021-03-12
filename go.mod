@@ -7,6 +7,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/prometheus/client_golang v1.9.0
 	github.com/prometheus/common v0.18.0
+	github.com/prometheus/exporter-toolkit v0.5.1
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )

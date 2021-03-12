@@ -105,15 +105,21 @@ make build
 
 ### Testing
 
-[![Build Status](https://travis-ci.org/prometheus/haproxy_exporter.png?branch=master)][travisci]
 [![CircleCI](https://circleci.com/gh/prometheus/haproxy_exporter/tree/master.svg?style=shield)][circleci]
 
 ```bash
 make test
 ```
 
-[travisci]: https://travis-ci.org/prometheus/haproxy_exporter
 [circleci]: https://circleci.com/gh/prometheus/haproxy_exporter
+
+### TLS and basic authentication
+
+The HAProxy Exporter supports TLS and basic authentication.
+
+To use TLS and/or basic authentication, you need to pass a configuration file
+using the `--web.config.file` parameter. The format of the file is described
+[in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
 
 ## License
 
