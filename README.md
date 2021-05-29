@@ -129,12 +129,18 @@ Apache License 2.0, see [LICENSE](https://github.com/prometheus/haproxy_exporter
 
 ### Official Prometheus exporter
 
-As of 2.0.0, HAProxy includes a Prometheus exporter module that can be built into your binary during build time.
+As of 2.0.0, HAProxy includes a Prometheus exporter module that can be built into your binary during build time. This is achieved via a flag passed to `make`. The value of the flag is dependent on the version of HAProxy:
 
-To build with the official Prometheus exporter module, `make` with the following `EXTRA_OBJS` flag:
+HAProxy 2.0.x - 2.3.x: The `EXTRA_OBJS` flag should be passed to `make`.
 
 ```bash
 make TARGET=linux-glibc EXTRA_OBJS="contrib/prometheus-exporter/service-prometheus.o"
+```
+
+HAProxy 2.4.x: The `USE_PROMEX` flag should be passed to `make`.
+
+```bash
+make TARGET=linux-glibc USE_PROMEX=1
 ```
 
 Once built, you can enable and configure the Prometheus endpoint from your `haproxy.cfg` file as a typical frontend:
