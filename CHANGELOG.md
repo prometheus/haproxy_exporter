@@ -1,3 +1,9 @@
+## 0.13.0 / 2021-03-12
+
+* [FEATURE] Add TLS and Basic authentication #205
+* [ENHANCEMENT] Added average over last 1024 requests metrics to server metric type #196
+* [BUGFIX] Fix docker images architecture and publish ppc64le & s390x images #211
+
 ## 0.12.0 / 2020-12-09
 
 * [ENHANCEMENT] Add --version flag #189
