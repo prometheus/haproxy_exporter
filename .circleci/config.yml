@@ -6,7 +6,7 @@ jobs:
     # Whenever the Go version is updated here, .promu.yml
     # should also be updated.
     docker:
-      - image: circleci/golang:1.16
+      - image: circleci/golang:1.17
     steps:
       - prometheus/setup_environment
       - setup_remote_docker
