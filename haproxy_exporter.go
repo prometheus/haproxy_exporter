@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -32,9 +31,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -593,18 +593,8 @@ func main() {
 	prometheus.MustRegister(version.NewCollector("haproxy_exporter"))
 
 	if *haProxyPidFile != "" {
-		procExporter := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
-			PidFn: func() (int, error) {
-				content, err := ioutil.ReadFile(*haProxyPidFile)
-				if err != nil {
-					return 0, fmt.Errorf("can't read pid file: %s", err)
-				}
-				value, err := strconv.Atoi(strings.TrimSpace(string(content)))
-				if err != nil {
-					return 0, fmt.Errorf("can't parse pid file: %s", err)
-				}
-				return value, nil
-			},
+		procExporter := collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
+			PidFn:     prometheus.NewPidFileFn(*haProxyPidFile),
 			Namespace: namespace,
 		})
 		prometheus.MustRegister(procExporter)
