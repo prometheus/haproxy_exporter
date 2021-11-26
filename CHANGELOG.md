@@ -1,4 +1,4 @@
-## 0.13.0 / 2021-03-12
+## 0.13.0 / 2021-11-26
 
 * [FEATURE] Add TLS and Basic authentication #205
 * [ENHANCEMENT] Added average over last 1024 requests metrics to server metric type #196
