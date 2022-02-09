@@ -34,7 +34,7 @@ import (
 
 const (
 	testSocket = "/tmp/haproxyexportertest.sock"
-	testInfo   = "Release_date: test date\nVersion: test version\n"
+	testInfo   = "Release_date: test date\nVersion: test version\nIdle_pct: 100\n"
 )
 
 type haproxy struct {
