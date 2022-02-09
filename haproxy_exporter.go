@@ -439,7 +439,7 @@ type versionInfo struct {
 
 func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
 	var version, releaseDate string
-	// A value of -1 is used to indicate it's unset
+	// idlePct value of -1 is used to indicate it's unset
 	var idlePct float64 = -1
 	s := bufio.NewScanner(i)
 	for s.Scan() {
