@@ -252,7 +252,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, sslVerify bool, proxyFromEnv bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
+func NewExporter(uri string, sslVerify, proxyFromEnv bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -331,7 +331,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.csvParseFailures
 }
 
-func fetchHTTP(uri string, sslVerify bool, proxyFromEnv bool, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchHTTP(uri string, sslVerify, proxyFromEnv bool, timeout time.Duration) func() (io.ReadCloser, error) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: !sslVerify}}
 	if proxyFromEnv {
 		tr.Proxy = http.ProxyFromEnvironment
@@ -569,7 +569,7 @@ func main() {
 		haProxyServerExcludeStates = kingpin.Flag("haproxy.server-exclude-states", "Comma-separated list of exported server states to exclude. See https://cbonte.github.io/haproxy-dconv/1.8/management.html#9.1, field 17 statuus").Default(excludedServerStates).String()
 		haProxyTimeout             = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
 		haProxyPidFile             = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
-		httpProxyFromEnv           = kingpin.Flag("http.proxy-from-env", "Flag that enables using HTTP proxy settings from environment variables ($HTTP_PROXY, $HTTPS_PROXY, $NO_PROXY)").Default("false").Bool()
+		httpProxyFromEnv           = kingpin.Flag("http.proxy-from-env", "Flag that enables using HTTP proxy settings from environment variables ($http_proxy, $https_proxy, $no_proxy)").Default("false").Bool()
 	)
 
 	promlogConfig := &promlog.Config{}
