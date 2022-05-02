@@ -569,7 +569,7 @@ func main() {
 		haProxyServerExcludeStates = kingpin.Flag("haproxy.server-exclude-states", "Comma-separated list of exported server states to exclude. See https://cbonte.github.io/haproxy-dconv/1.8/management.html#9.1, field 17 statuus").Default(excludedServerStates).String()
 		haProxyTimeout             = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
 		haProxyPidFile             = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
-		haProxyProxyFromEnv        = kingpin.Flag("haproxy.proxy-from-env", "Flag that enables using HTTP proxy settings from environment variables ($HTTP_PROXY, $HTTPS_PROXY, $NO_PROXY)").Default("false").Bool()
+		httpProxyFromEnv           = kingpin.Flag("http.proxy-from-env", "Flag that enables using HTTP proxy settings from environment variables ($HTTP_PROXY, $HTTPS_PROXY, $NO_PROXY)").Default("false").Bool()
 	)
 
 	promlogConfig := &promlog.Config{}
@@ -588,7 +588,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting haproxy_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
-	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, *haProxyProxyFromEnv, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
+	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, *httpProxyFromEnv, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating an exporter", "err", err)
 		os.Exit(1)

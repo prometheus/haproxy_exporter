@@ -60,11 +60,11 @@ haproxy_exporter --no-haproxy.ssl-verify --haproxy.scrape-uri="https://haproxy.e
 
 If scraping a remote HAProxy must be done via an HTTP proxy, you can enable reading of the
 standard `$HTTP_PROXY` / `$HTTPS_PROXY` / `$NO_PROXY` environment variables by using the
-`--haproxy.proxy-from-env` flag (these variables will be ignored otherwise):
+`--http.proxy-from-env` flag (these variables will be ignored otherwise):
 
 ```bash
 export HTTP_PROXY="http://proxy:3128"
-haproxy_exporter --haproxy.proxy-from-env --haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;csv"
+haproxy_exporter --http.proxy-from-env --haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;csv"
 ```
 
 [basic auth]: https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth
