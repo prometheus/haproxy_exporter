@@ -114,7 +114,7 @@ make build
 
 ### Testing
 
-[![CircleCI](https://circleci.com/gh/prometheus/haproxy_exporter/tree/master.svg?style=shield)][circleci]
+[![CircleCI](https://circleci.com/gh/prometheus/haproxy_exporter/tree/main.svg?style=shield)][circleci]
 
 ```bash
 make test
@@ -132,7 +132,7 @@ using the `--web.config.file` parameter. The format of the file is described
 
 ## License
 
-Apache License 2.0, see [LICENSE](https://github.com/prometheus/haproxy_exporter/blob/master/LICENSE).
+Apache License 2.0, see [LICENSE](https://github.com/prometheus/haproxy_exporter/blob/main/LICENSE).
 
 ## Alternatives
 
