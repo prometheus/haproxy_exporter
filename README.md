@@ -58,6 +58,15 @@ you can disable it using the `--no-haproxy.ssl-verify` flag:
 haproxy_exporter --no-haproxy.ssl-verify --haproxy.scrape-uri="https://haproxy.example.com/haproxy?stats;csv"
 ```
 
+If scraping a remote HAProxy must be done via an HTTP proxy, you can enable reading of the
+standard [`$http_proxy` / `$https_proxy` / `$no_proxy` environment variables](https://pkg.go.dev/net/http#ProxyFromEnvironment) by using the
+`--http.proxy-from-env` flag (these variables will be ignored otherwise):
+
+```bash
+export HTTP_PROXY="http://proxy:3128"
+haproxy_exporter --http.proxy-from-env --haproxy.scrape-uri="http://haproxy.example.com/haproxy?stats;csv"
+```
+
 [basic auth]: https://cbonte.github.io/haproxy-dconv/configuration-1.6.html#4-stats%20auth
 
 ### Unix Sockets

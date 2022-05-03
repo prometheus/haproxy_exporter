@@ -252,7 +252,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
+func NewExporter(uri string, sslVerify, proxyFromEnv bool, selectedServerMetrics map[int]metricInfo, excludedServerStates string, timeout time.Duration, logger log.Logger) (*Exporter, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -262,7 +262,7 @@ func NewExporter(uri string, sslVerify bool, selectedServerMetrics map[int]metri
 	var fetchStat func() (io.ReadCloser, error)
 	switch u.Scheme {
 	case "http", "https", "file":
-		fetchStat = fetchHTTP(uri, sslVerify, timeout)
+		fetchStat = fetchHTTP(uri, sslVerify, proxyFromEnv, timeout)
 	case "unix":
 		fetchInfo = fetchUnix(u, showInfoCmd, timeout)
 		fetchStat = fetchUnix(u, showStatCmd, timeout)
@@ -331,8 +331,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.csvParseFailures
 }
 
-func fetchHTTP(uri string, sslVerify bool, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchHTTP(uri string, sslVerify, proxyFromEnv bool, timeout time.Duration) func() (io.ReadCloser, error) {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: !sslVerify}}
+	if proxyFromEnv {
+		tr.Proxy = http.ProxyFromEnvironment
+	}
 	client := http.Client{
 		Timeout:   timeout,
 		Transport: tr,
@@ -566,6 +569,7 @@ func main() {
 		haProxyServerExcludeStates = kingpin.Flag("haproxy.server-exclude-states", "Comma-separated list of exported server states to exclude. See https://cbonte.github.io/haproxy-dconv/1.8/management.html#9.1, field 17 statuus").Default(excludedServerStates).String()
 		haProxyTimeout             = kingpin.Flag("haproxy.timeout", "Timeout for trying to get stats from HAProxy.").Default("5s").Duration()
 		haProxyPidFile             = kingpin.Flag("haproxy.pid-file", pidFileHelpText).Default("").String()
+		httpProxyFromEnv           = kingpin.Flag("http.proxy-from-env", "Flag that enables using HTTP proxy settings from environment variables ($http_proxy, $https_proxy, $no_proxy)").Default("false").Bool()
 	)
 
 	promlogConfig := &promlog.Config{}
@@ -584,7 +588,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting haproxy_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
-	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
+	exporter, err := NewExporter(*haProxyScrapeURI, *haProxySSLVerify, *httpProxyFromEnv, selectedServerMetrics, *haProxyServerExcludeStates, *haProxyTimeout, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating an exporter", "err", err)
 		os.Exit(1)
