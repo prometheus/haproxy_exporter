@@ -264,8 +264,11 @@ func NewExporter(uri string, sslVerify, proxyFromEnv bool, selectedServerMetrics
 	case "http", "https", "file":
 		fetchStat = fetchHTTP(uri, sslVerify, proxyFromEnv, timeout)
 	case "unix":
-		fetchInfo = fetchUnix(u, showInfoCmd, timeout)
-		fetchStat = fetchUnix(u, showStatCmd, timeout)
+		fetchInfo = fetchUnix("unix", u.Path, showInfoCmd, timeout)
+		fetchStat = fetchUnix("unix", u.Path, showStatCmd, timeout)
+	case "tcp":
+		fetchInfo = fetchUnix("tcp", u.Host, showInfoCmd, timeout)
+		fetchStat = fetchUnix("tcp", u.Host, showStatCmd, timeout)
 	default:
 		return nil, fmt.Errorf("unsupported scheme: %q", u.Scheme)
 	}
@@ -354,9 +357,9 @@ func fetchHTTP(uri string, sslVerify, proxyFromEnv bool, timeout time.Duration) 
 	}
 }
 
-func fetchUnix(u *url.URL, cmd string, timeout time.Duration) func() (io.ReadCloser, error) {
+func fetchUnix(scheme, address, cmd string, timeout time.Duration) func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
-		f, err := net.DialTimeout("unix", u.Path, timeout)
+		f, err := net.DialTimeout(scheme, address, timeout)
 		if err != nil {
 			return nil, err
 		}
