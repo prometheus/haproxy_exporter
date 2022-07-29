@@ -16,7 +16,6 @@ package main
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -344,7 +343,7 @@ func TestFilterServerMetrics(t *testing.T) {
 }
 
 func BenchmarkExtract(b *testing.B) {
-	config, err := ioutil.ReadFile("test/haproxy.csv")
+	config, err := os.ReadFile("test/haproxy.csv")
 	if err != nil {
 		b.Fatalf("could not read config file: %v", err.Error())
 	}
