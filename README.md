@@ -51,6 +51,14 @@ scrape URL:
 haproxy_exporter  --haproxy.scrape-uri="http://user:pass@haproxy.example.com/haproxy?stats;csv"
 ```
 
+Alternatively, provide the password through a file, so that it does not appear in the process
+table or in the output of the ```/debug/pprof/cmdline``` profiling service:
+
+```bash
+echo '--haproxy.scrape-uri=http://user:pass@haproxy.example.com/haproxy?stats;csv' > args
+haproxy_exporter @args
+```
+
 You can also scrape HTTPS URLs. Certificate validation is enabled by default, but
 you can disable it using the `--no-haproxy.ssl-verify` flag:
 
