@@ -89,8 +89,7 @@ func TestServerWithoutChecks(t *testing.T) {
 
 // TestServerBrokenCSV ensures bugs in CSV format are handled gracefully. List of known bugs:
 //
-//   * http://permalink.gmane.org/gmane.comp.web.haproxy/26561
-//
+//   - http://permalink.gmane.org/gmane.comp.web.haproxy/26561
 func TestServerBrokenCSV(t *testing.T) {
 	const data = `foo,FRONTEND,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
 foo,bug-missing-comma,0,0,0,0,,0,0,0,,0,,0,0,0,0,DRAIN (agent)1,1,0,0,0,5007,0,,1,8,1,,0,,2,0,,0,L4OK,,0,,,,,,,0,,,,0,0,,,,,,,,,,,
