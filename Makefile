@@ -19,10 +19,11 @@ all:: vet checkmetrics common-all
 
 include Makefile.common
 
-PROMTOOL_DOCKER_IMAGE ?= $(shell docker pull -q quay.io/prometheus/prometheus:latest || echo quay.io/prometheus/prometheus:latest)
-PROMTOOL ?= docker run -i --rm -w "$(PWD)" -v "$(PWD):$(PWD)" --entrypoint promtool $(PROMTOOL_DOCKER_IMAGE)
+PROMETHEUS_VERSION=2.39.1
+PROMTOOL ?= /tmp/prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool
 
 .PHONY: checkmetrics
 checkmetrics:
 	@echo ">> checking metrics for correctness"
+	if ! test -x $(PROMTOOL); then curl -sL -o - https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)/prometheus-$(PROMETHEUS_VERSION).linux-amd64.tar.gz | tar -C /tmp -xzf - prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool; fi
 	for file in test/*.metrics; do $(PROMTOOL) check metrics < $$file || exit 1; done
