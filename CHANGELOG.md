@@ -1,3 +1,8 @@
+## 0.14.0 / 2023-11-29
+
+* [SECURITY] Update Exporter Toolkit (CVE-2022-46146) #251
+* [FEATURE] Support multiple Listen Addresses and systemd socket activation #251
+
 ## 0.13.0 / 2021-11-26
 
 * [FEATURE] Add TLS and Basic authentication #205
