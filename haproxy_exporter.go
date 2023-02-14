@@ -461,7 +461,7 @@ func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
 		case "Version":
 			version = field[1]
 		case "Idle_pct":
-			i, err := strconv.ParseFloat(field[1], 10)
+			i, err := strconv.ParseFloat(field[1], 64)
 			if err == nil && i >= 0 && i <= 100 {
 				idlePct = i
 			}
