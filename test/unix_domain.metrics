@@ -81,6 +81,6 @@ haproxy_up 1
 # HELP haproxy_version_info HAProxy version info.
 # TYPE haproxy_version_info gauge
 haproxy_version_info{release_date="test date",version="test version"} 1
-# HELP haproxy_idle_percent Time spent waiting for events instead of processing them.
-# TYPE haproxy_idle_percent gauge
-haproxy_idle_percent 100
+# HELP haproxy_process_idle_time_percent Time spent waiting for events instead of processing them.
+# TYPE haproxy_process_idle_time_percent gauge
+haproxy_process_idle_time_percent 100

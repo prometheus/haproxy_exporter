@@ -234,7 +234,7 @@ var (
 
 	haproxyInfo    = prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "HAProxy version info.", []string{"release_date", "version"}, nil)
 	haproxyUp      = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of HAProxy successful.", nil, nil)
-	haproxyIdlePct = prometheus.NewDesc(prometheus.BuildFQName(namespace, "idle", "percent"), "Time spent waiting for events instead of processing them.", nil, nil)
+	haproxyIdlePct = prometheus.NewDesc(prometheus.BuildFQName(namespace, "process_idle_time", "percent"), "Time spent waiting for events instead of processing them.", nil, nil)
 )
 
 // Exporter collects HAProxy stats from the given URI and exports them using
