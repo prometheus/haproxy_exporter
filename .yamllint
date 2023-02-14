@@ -15,7 +15,10 @@ rules:
   indentation:
     spaces: consistent
     indent-sequences: consistent
+  key-duplicates:
+    ignore: |
+      config/testdata/section_key_dup.bad.yml
   line-length: disable
   truthy:
     ignore: |
-      .github/workflows/ci.yml
+      .github/workflows/*.yml
