@@ -232,8 +232,9 @@ var (
 		61: newBackendMetric("http_total_time_average_seconds", "Avg. HTTP total time for last 1024 successful connections.", prometheus.GaugeValue, nil),
 	}
 
-	haproxyInfo = prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "HAProxy version info.", []string{"release_date", "version"}, nil)
-	haproxyUp   = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of HAProxy successful.", nil, nil)
+	haproxyInfo    = prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "HAProxy version info.", []string{"release_date", "version"}, nil)
+	haproxyUp      = prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "up"), "Was the last scrape of HAProxy successful.", nil, nil)
+	haproxyIdlePct = prometheus.NewDesc(prometheus.BuildFQName(namespace, "idle", "percent"), "Time spent waiting for events instead of processing them.", nil, nil)
 )
 
 // Exporter collects HAProxy stats from the given URI and exports them using
@@ -317,6 +318,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 	ch <- haproxyInfo
 	ch <- haproxyUp
+	ch <- haproxyIdlePct
 	ch <- e.totalScrapes.Desc()
 	ch <- e.csvParseFailures.Desc()
 }
@@ -397,6 +399,9 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) (up float64) {
 			level.Debug(e.logger).Log("msg", "Failed parsing show info", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(haproxyInfo, prometheus.GaugeValue, 1, info.ReleaseDate, info.Version)
+			if info.IdlePct != -1 {
+				ch <- prometheus.MustNewConstMetric(haproxyIdlePct, prometheus.GaugeValue, info.IdlePct)
+			}
 		}
 	}
 
@@ -435,10 +440,13 @@ loop:
 type versionInfo struct {
 	ReleaseDate string
 	Version     string
+	IdlePct     float64
 }
 
 func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
 	var version, releaseDate string
+	// idlePct value of -1 is used to indicate it's unset
+	var idlePct float64 = -1
 	s := bufio.NewScanner(i)
 	for s.Scan() {
 		line := s.Text()
@@ -452,9 +460,14 @@ func (e *Exporter) parseInfo(i io.Reader) (versionInfo, error) {
 			releaseDate = field[1]
 		case "Version":
 			version = field[1]
+		case "Idle_pct":
+			i, err := strconv.ParseFloat(field[1], 10)
+			if err == nil && i >= 0 && i <= 100 {
+				idlePct = i
+			}
 		}
 	}
-	return versionInfo{ReleaseDate: releaseDate, Version: version}, s.Err()
+	return versionInfo{ReleaseDate: releaseDate, Version: version, IdlePct: idlePct}, s.Err()
 }
 
 func (e *Exporter) parseRow(csvRow []string, ch chan<- prometheus.Metric) {
