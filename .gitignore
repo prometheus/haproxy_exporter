@@ -1,6 +1,7 @@
 .build
 bin/haproxy_exporter*
 haproxy_exporter
+haproxy_exporter.exe
 *.tar.gz
 *.test
 *.mprof
