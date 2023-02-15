@@ -3,7 +3,7 @@
 This is a simple server that scrapes HAProxy stats and exports them via HTTP for
 Prometheus consumption.
 
-***Note:** since HAProxy 2.0.0, the official source includes a Prometheus exporter module that can be built into your binary with a single flag during build time and offers an exporter-free Prometheus endpoint. More information [down below](#official-prometheus-exporter).*
+***Note:** since HAProxy 2.0.0, the official source includes a Prometheus exporter module that can be built into your binary with a single flag during build time and offers a built-in Prometheus endpoint. More information see [down below](#official-prometheus-exporter).*
 
 ## Getting Started
 
@@ -146,19 +146,14 @@ Apache License 2.0, see [LICENSE](https://github.com/prometheus/haproxy_exporter
 
 ### Official Prometheus exporter
 
-As of 2.0.0, HAProxy includes a Prometheus exporter module that can be built into your binary during build time. This is achieved via a flag passed to `make`. The value of the flag is dependent on the version of HAProxy:
-
-HAProxy 2.0.x - 2.3.x: The `EXTRA_OBJS` flag should be passed to `make`.
-
-```bash
-make TARGET=linux-glibc EXTRA_OBJS="contrib/prometheus-exporter/service-prometheus.o"
-```
-
-HAProxy 2.4.x: The `USE_PROMEX` flag should be passed to `make`.
+As of 2.0.0, HAProxy includes a Prometheus exporter module that can be built into your binary during build time.
+For HAProxy 2.4 and higher, pass the `USE_PROMEX` flag to `make`:
 
 ```bash
 make TARGET=linux-glibc USE_PROMEX=1
 ```
+
+Pre-built versions, including the [Docker image](https://hub.docker.com/_/haproxy), typically have this enabled already.
 
 Once built, you can enable and configure the Prometheus endpoint from your `haproxy.cfg` file as a typical frontend:
 
