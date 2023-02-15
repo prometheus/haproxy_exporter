@@ -413,7 +413,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) (up float64) {
 	defer body.Close()
 
 	reader := csv.NewReader(body)
-	reader.TrailingComma = true
 	reader.Comment = '#'
 
 loop:
