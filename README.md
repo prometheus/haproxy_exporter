@@ -3,7 +3,11 @@
 This is a simple server that scrapes HAProxy stats and exports them via HTTP for
 Prometheus consumption.
 
-***Note:** since HAProxy 2.0.0, the official source includes a Prometheus exporter module that can be built into your binary with a single flag during build time and offers a built-in Prometheus endpoint. More information see [down below](#official-prometheus-exporter).*
+## This exporter is retired
+
+In all supported versions of HAProxy, the official source includes a Prometheus exporter module that can be built into your binary with a single flag during build time and offers a native Prometheus endpoint. For more information see [down below](#official-prometheus-exporter).
+
+Please transition to using the built-in support as soon as possible.
 
 ## Getting Started
 

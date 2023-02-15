@@ -1,4 +1,13 @@
-## 0.14.0 / 2023-11-29
+## 0.15.0 / 2023-02-15
+
+* [FEATURE] Add metric for idle time percentage #236 #255
+* [ENHANCEMENT] Dependency updates #252 #253 #254
+
+This is the **FINAL RELEASE** of the standalone HAProxy exporter.
+All supported versions of HAProxy now have Prometheus metrics [built in](https://github.com/prometheus/haproxy_exporter#official-prometheus-exporter).
+Please transition to using the built-in support as soon as possible.
+
+## 0.14.0 / 2022-11-29
 
 * [SECURITY] Update Exporter Toolkit (CVE-2022-46146) #251
 * [FEATURE] Support multiple Listen Addresses and systemd socket activation #251
